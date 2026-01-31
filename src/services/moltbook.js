@@ -38,6 +38,7 @@ class MoltbookService {
             id: post.author.id,
             name: post.author.name || 'Unknown',
             karma: postUpvotes,
+            avatar: post.author.avatar || post.author.profile_image || post.author.profileImage || post.author.image || null,
             description: `Active in ${post.submolt?.display_name || post.submolt?.name || 'general'}`,
             recentPost: {
               title: post.title || 'Untitled',
@@ -82,7 +83,8 @@ class MoltbookService {
           id: post.author.id || post.author._id,
           name: post.author.name || post.author.username,
           karma: post.author.karma || post.author.score || 0,
-          description: post.author.description || post.author.bio || 'A mysterious agent...'
+          description: post.author.description || post.author.bio || 'A mysterious agent...',
+          avatar: post.author.avatar || post.author.profile_image || post.author.profileImage || post.author.image || null
         } : null,
         upvotes: post.upvotes || post.score || post.likes || 0
       }));
