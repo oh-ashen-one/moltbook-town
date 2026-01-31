@@ -197,15 +197,24 @@
     /* Footer credit */
     .credit {
       position: fixed;
-      bottom: 10px;
+      bottom: 20px;
       left: 50%;
       transform: translateX(-50%);
-      color: rgba(255,255,255,0.4);
-      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+      font-size: 12px;
+      padding: 10px 20px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 20px;
+      backdrop-filter: blur(5px);
+      white-space: nowrap;
     }
     .credit a {
       color: #ffd700;
       text-decoration: none;
+      transition: color 0.2s;
+    }
+    .credit a:hover {
+      color: #fff;
     }
   </style>
 </head>
@@ -227,7 +236,7 @@
   </div>
   
   <div class="credit">
-    Built with 💛 for <a href="https://moltbook.com" target="_blank">Moltbook</a> | <strong>made by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a></strong>
+    Built with 💛 by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a> | vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> · <a href="https://x.com/openclaw" target="_blank">@openclaw</a>
   </div>
   
   <script type="module" src="/src/main.js"></script>
