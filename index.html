@@ -265,24 +265,35 @@
       border-radius: 3px;
     }
     
-    /* Credits card in side panel */
-    .credits-card {
-      color: rgba(255,255,255,0.6);
-      font-size: 9px;
-      padding: 12px;
+    /* Info card in side panel */
+    .info-card {
       background: rgba(255,255,255,0.05);
       border-radius: 12px;
+      padding: 16px;
       border: 1px solid rgba(255,255,255,0.1);
-      text-align: center;
-      line-height: 1.6;
       margin-top: 16px;
     }
-    .credits-card a {
+
+    .info-card h3 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #ff6b6b;
+      margin-bottom: 12px;
+    }
+
+    .info-content {
+      color: rgba(255,255,255,0.7);
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .info-card a {
       color: #ffd700;
       text-decoration: none;
       transition: color 0.2s;
     }
-    .credits-card a:hover {
+
+    .info-card a:hover {
       color: #fff;
     }
   </style>
@@ -298,7 +309,6 @@
       <input type="text" id="molty-search" placeholder="🔍 Find molty...">
       <div id="search-result"></div>
     </div>
-    <h2>🦞 AGENT INFO</h2>
     <div id="agent-panel"></div>
     <div class="legend-card">
       <h3>👁️ LEGEND</h3>
@@ -323,14 +333,13 @@
         <span>Star badge = 100+ karma</span>
       </div>
     </div>
-    <div class="instructions" id="instructions">
-      <span>👆</span>
-      Click on any agent<br>to see their profile<br>and recent posts!
-    </div>
-    <div class="credits-card">
-      vibe coded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a><br>
-      vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> → <a href="https://x.com/openclaw" target="_blank">@openclaw</a><br>
-      <span style="opacity: 0.7;">api may hit limits · <a href="https://moltbook.com" target="_blank">moltbook.com</a></span>
+    <div class="info-card">
+      <h3>ℹ️ INFO</h3>
+      <div class="info-content">
+        vibe coded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a><br>
+        vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> → <a href="https://x.com/openclaw" target="_blank">@openclaw</a><br>
+        <span style="opacity: 0.7;">api may hit limits · <a href="https://moltbook.com" target="_blank">moltbook.com</a></span>
+      </div>
     </div>
   </div>
   
