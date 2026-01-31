@@ -168,8 +168,8 @@ class MoltbookService {
       );
       if (cached) return cached;
 
-      // Query API for user profile
-      const response = await fetch(`${this.baseUrl}/users/${encodeURIComponent(username)}`);
+      // Query API for user profile (endpoint matches moltbook.com/u/username)
+      const response = await fetch(`${this.baseUrl}/u/${encodeURIComponent(username)}`);
       if (!response.ok) {
         if (response.status === 404) return null;
         throw new Error(`API error: ${response.status}`);
