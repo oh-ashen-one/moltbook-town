@@ -52,7 +52,7 @@ export class TownScene extends Phaser.Scene {
     buildings.forEach(b => {
       const building = this.add.image(b.x, b.y, b.key);
       building.setScale(0.8);
-      
+
       if (b.label) {
         this.add.text(b.x, b.y + 60, b.label, {
           fontSize: '10px',
@@ -76,51 +76,60 @@ export class TownScene extends Phaser.Scene {
   }
 
   async loadAgents() {
-    const agentData = await moltbookService.fetchTopAgents(CONFIG.MAX_AGENTS);
+    try {
+      const agentData = await moltbookService.fetchTopAgents(CONFIG.MAX_AGENTS);
 
-    // Update UI
-    document.getElementById('agent-count').textContent = `${agentData.length} moltys in town`;
+      // Update UI
+      document.getElementById('agent-count').textContent = `${agentData.length} moltys in town`;
 
-    // Molty sprite colors
-    const moltySprites = ['molty_red', 'molty_blue', 'molty_green', 'molty_purple', 'molty_orange'];
+      // Molty sprite colors
+      const moltySprites = ['molty_red', 'molty_blue', 'molty_green', 'molty_purple', 'molty_orange'];
 
-    // Create agent entities
-    agentData.forEach((data, index) => {
-      const x = 150 + Math.random() * (CONFIG.GAME_WIDTH - 300);
-      const y = 150 + Math.random() * (CONFIG.GAME_HEIGHT - 300);
-      const spriteKey = moltySprites[index % moltySprites.length];
+      // Create agent entities
+      agentData.forEach((data, index) => {
+        const x = 150 + Math.random() * (CONFIG.GAME_WIDTH - 300);
+        const y = 150 + Math.random() * (CONFIG.GAME_HEIGHT - 300);
+        const spriteKey = moltySprites[index % moltySprites.length];
 
-      const agent = new Agent(this, data, x, y, spriteKey);
-      agent.setRandomTarget();
-      this.agents.push(agent);
+        const agent = new Agent(this, data, x, y, spriteKey);
+        agent.setRandomTarget();
+        this.agents.push(agent);
 
-      // Stagger entrance animation
-      agent.sprite.setScale(0);
-      this.tweens.add({
-        targets: agent.sprite,
-        scale: 0.5,
-        duration: 300,
-        delay: index * 50,
-        ease: 'Back.easeOut'
+        // Stagger entrance animation
+        agent.sprite.setScale(0);
+        this.tweens.add({
+          targets: agent.sprite,
+          scale: agent.baseScale,
+          duration: 300,
+          delay: index * 50,
+          ease: 'Back.easeOut'
+        });
       });
-    });
 
-    console.log(`Loaded ${this.agents.length} moltys`);
+      console.log(`Loaded ${this.agents.length} moltys`);
+    } catch (error) {
+      console.error('Failed to load agents:', error);
+      document.getElementById('agent-count').textContent = 'Error loading agents';
+    }
   }
 
   async refreshActivity() {
-    console.log('Refreshing Moltbook activity...');
-    const { posts } = await moltbookService.fetchFeed('new', 10);
+    try {
+      console.log('Refreshing Moltbook activity...');
+      const { posts } = await moltbookService.fetchFeed('new', 10);
 
-    // Show recent posts as speech bubbles
-    posts.slice(0, 3).forEach((post, i) => {
-      const agent = this.agents.find(a => a.data.id === post.author?.id);
-      if (agent) {
-        this.time.delayedCall(i * 2000, () => {
-          agent.showSpeech(post.title);
-        });
-      }
-    });
+      // Show recent posts as speech bubbles
+      posts.slice(0, 3).forEach((post, i) => {
+        const agent = this.agents.find(a => a.data.id === post.author?.id);
+        if (agent) {
+          this.time.delayedCall(i * 2000, () => {
+            agent.showSpeech(post.title);
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Failed to refresh activity:', error);
+    }
   }
 
   showRandomSpeech() {

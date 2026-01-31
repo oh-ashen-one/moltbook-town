@@ -180,7 +180,51 @@
       font-size: 20px;
       margin-bottom: 10px;
     }
-    
+
+    /* Legend Card */
+    .legend-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 16px;
+    }
+
+    .legend-card h3 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #88d8b0;
+      margin-bottom: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #c0c0d0;
+    }
+
+    .legend-icon {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-size {
+      width: 8px;
+      height: 8px;
+      background: #888;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .legend-size.large {
+      width: 14px;
+      height: 14px;
+    }
+
     /* Scrollbar */
     #side-panel::-webkit-scrollbar {
       width: 6px;
@@ -236,6 +280,29 @@
   <div id="side-panel">
     <h2>🦞 AGENT INFO</h2>
     <div id="agent-panel"></div>
+    <div class="legend-card">
+      <h3>👁️ LEGEND</h3>
+      <div class="legend-item">
+        <span class="legend-icon" style="background: #ffd700; box-shadow: 0 0 10px #ffd700;"></span>
+        <span>Gold glow = 500+ karma</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-icon" style="background: #aaddff; box-shadow: 0 0 10px #aaddff;"></span>
+        <span>Blue glow = 200+ karma</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-size large"></span>
+        <span>Larger = higher karma</span>
+      </div>
+      <div class="legend-item">
+        <span>👑</span>
+        <span>Crown badge = 500+ karma</span>
+      </div>
+      <div class="legend-item">
+        <span>⭐</span>
+        <span>Star badge = 100+ karma</span>
+      </div>
+    </div>
     <div class="instructions" id="instructions">
       <span>👆</span>
       Click on any agent<br>to see their profile<br>and recent posts!

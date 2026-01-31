@@ -31,8 +31,8 @@ export const CONFIG = {
   AGENT_SPEED: 50,
   SPEECH_DURATION: 8000, // ms to show speech bubble
   
-  // API settings
-  MOLTBOOK_API: 'https://www.moltbook.com/api/v1',
+  // API settings (proxied through Cloudflare Worker - key is server-side)
+  MOLTBOOK_API: 'https://moltbook-proxy.motbooktownapikey.workers.dev',
   REFRESH_INTERVAL: 60000, // ms between API refreshes
   
   // Colors for agents (cycle through these)

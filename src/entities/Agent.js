@@ -6,9 +6,22 @@ export class Agent {
     this.data = agentData;
     this.spriteKey = spriteKey;
 
+    // Scale based on karma (0.4 to 0.7 range)
+    const karmaScale = Math.min(0.7, 0.4 + (agentData.karma / 500) * 0.3);
+    this.baseScale = karmaScale;
+
     // Create the agent sprite
     this.sprite = scene.add.image(x, y, spriteKey);
-    this.sprite.setScale(0.5);
+    this.sprite.setScale(karmaScale);
+
+    // Add glow for high-karma agents
+    this.glow = null;
+    if (agentData.karma > 200) {
+      const glowColor = agentData.karma > 500 ? 0xffd700 : 0xaaddff;
+      const glowAlpha = Math.min(0.4, agentData.karma / 1500);
+      this.glow = scene.add.circle(x, y, 30 * karmaScale, glowColor, glowAlpha);
+      this.glow.setDepth(-1);
+    }
 
     // Add shadow
     this.shadow = scene.add.ellipse(x, y + 25, 30, 10, 0x000000, 0.3);
@@ -87,12 +100,11 @@ export class Agent {
         this.sprite.setFlipX(false);
       }
 
-      // Walk animation (swap between frames)
+      // Walk animation
       this.walkTimer += delta;
       if (this.walkTimer > 200) {
         this.walkTimer = 0;
         this.walkFrame = 1 - this.walkFrame;
-        // Toggle between walk frames if we had them loaded
       }
     } else {
       this.isMoving = false;
@@ -111,6 +123,11 @@ export class Agent {
     // Update positions
     this.shadow.setPosition(this.sprite.x, this.sprite.y + 25);
     this.shadow.setScale(1 - Math.abs(bob) * 0.02, 1);
+
+    // Glow follows agent
+    if (this.glow) {
+      this.glow.setPosition(this.sprite.x, this.sprite.y);
+    }
 
     this.nameLabel.setPosition(this.sprite.x, visualY - 40);
     this.karmaBadge.setPosition(this.sprite.x, visualY - 52);
@@ -133,19 +150,19 @@ export class Agent {
 
     // Bubble graphics
     this.speechBubble = this.scene.add.graphics();
-    
+
     // Shadow
     this.speechBubble.fillStyle(0x000000, 0.2);
     this.speechBubble.fillRoundedRect(bubbleX - bubbleWidth / 2 + 3, bubbleY - bubbleHeight / 2 + 3, bubbleWidth, bubbleHeight, 10);
-    
+
     // Background
     this.speechBubble.fillStyle(0xffffff, 0.95);
     this.speechBubble.fillRoundedRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
-    
+
     // Border
     this.speechBubble.lineStyle(2, 0x333333, 1);
     this.speechBubble.strokeRoundedRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
-    
+
     // Tail
     this.speechBubble.fillStyle(0xffffff, 0.95);
     this.speechBubble.fillTriangle(bubbleX - 5, bubbleY + bubbleHeight / 2 - 5, bubbleX + 5, bubbleY + bubbleHeight / 2 - 5, bubbleX, bubbleY + bubbleHeight / 2 + 8);
@@ -212,7 +229,7 @@ export class Agent {
   onHover() {
     this.scene.tweens.add({
       targets: this.sprite,
-      scale: 0.6,
+      scale: this.baseScale * 1.2,
       duration: 100,
     });
     this.scene.tweens.add({
@@ -220,12 +237,17 @@ export class Agent {
       scale: 1.1,
       duration: 100,
     });
+
+    // Show a preview of their post
+    if (this.data.recentPost && !this.speechBubble) {
+      this.showSpeech(this.data.recentPost.title, 2000);
+    }
   }
 
   onHoverEnd() {
     this.scene.tweens.add({
       targets: this.sprite,
-      scale: 0.5,
+      scale: this.baseScale,
       duration: 100,
     });
     this.scene.tweens.add({
@@ -240,6 +262,7 @@ export class Agent {
     this.shadow.destroy();
     this.nameLabel.destroy();
     this.karmaBadge.destroy();
+    if (this.glow) this.glow.destroy();
     this.hideSpeech();
   }
 }
