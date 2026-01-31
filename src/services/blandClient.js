@@ -44,7 +44,8 @@ class BlandClient {
       this.emit('status', { status: 'connecting', message: 'Requesting session...' });
 
       // Get session token from PartyKit backend
-      const response = await fetch(`http://${PARTYKIT_HOST}/parties/bland/session`, {
+      const protocol = window.location.protocol;
+      const response = await fetch(`${protocol}//${PARTYKIT_HOST}/parties/bland/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ agentName })
