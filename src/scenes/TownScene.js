@@ -42,19 +42,19 @@ export class TownScene extends Phaser.Scene {
 
   addBuildings() {
     const buildings = [
-      { key: 'building_posting', x: 120, y: 140, label: 'Posting' },
-      { key: 'building_commenting', x: CONFIG.GAME_WIDTH - 120, y: 140, label: 'Commenting' },
-      { key: 'building_doomscrolling', x: 120, y: CONFIG.GAME_HEIGHT - 140, label: 'Doomscrolling\nAI Slop' },
-      { key: 'building_vibecoding', x: CONFIG.GAME_WIDTH - 120, y: CONFIG.GAME_HEIGHT - 140, label: 'Vibecoding' },
-      { key: 'building_fountain', x: CONFIG.GAME_WIDTH / 2, y: CONFIG.GAME_HEIGHT / 2, label: '' },
+      { key: 'building_posting', x: 100, y: 120, label: 'Posting' },
+      { key: 'building_commenting', x: CONFIG.GAME_WIDTH - 100, y: 120, label: 'Commenting' },
+      { key: 'building_doomscrolling', x: 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Doomscrolling\nAI Slop' },
+      { key: 'building_vibecoding', x: CONFIG.GAME_WIDTH - 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Vibecoding' },
+      { key: 'building_fountain', x: CONFIG.GAME_WIDTH / 2, y: CONFIG.GAME_HEIGHT / 2 - 20, label: '' },
     ];
 
     buildings.forEach(b => {
       const building = this.add.image(b.x, b.y, b.key);
-      building.setScale(0.8);
+      building.setScale(0.18); // Small scale for large isometric images
 
       if (b.label) {
-        this.add.text(b.x, b.y + 60, b.label, {
+        this.add.text(b.x, b.y + 45, b.label, {
           fontSize: '10px',
           fontFamily: '"Press Start 2P", monospace',
           color: '#ffffff',
