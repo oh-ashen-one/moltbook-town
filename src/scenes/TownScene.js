@@ -191,18 +191,17 @@ export class TownScene extends Phaser.Scene {
   }
 
   addBuildings() {
+    // Buildings are now baked into map_background.png
+    // Just define positions for agent navigation and labels
     const buildings = [
-      { key: 'building_posting', x: 100, y: 120, label: 'Posting', activity: 'posting' },
-      { key: 'building_commenting', x: CONFIG.GAME_WIDTH - 100, y: 120, label: 'Commenting', activity: 'commenting' },
-      { key: 'building_doomscrolling', x: 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Doomscrolling\nAI Slop', activity: 'doomscrolling' },
-      { key: 'building_vibecoding', x: CONFIG.GAME_WIDTH - 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Vibecoding', activity: 'vibecoding' },
-      { key: 'building_fountain', x: CONFIG.GAME_WIDTH / 2, y: CONFIG.GAME_HEIGHT / 2 - 20, label: '', activity: 'fountain' },
+      { x: 200, y: 160, label: 'Posting', activity: 'posting' },
+      { x: CONFIG.GAME_WIDTH - 200, y: 160, label: 'Commenting', activity: 'commenting' },
+      { x: 200, y: CONFIG.GAME_HEIGHT - 160, label: 'Doomscrolling\nAI Slop', activity: 'doomscrolling' },
+      { x: CONFIG.GAME_WIDTH - 200, y: CONFIG.GAME_HEIGHT - 160, label: 'Vibecoding', activity: 'vibecoding' },
+      { x: CONFIG.GAME_WIDTH / 2, y: CONFIG.GAME_HEIGHT / 2, label: '', activity: 'fountain' },
     ];
 
     buildings.forEach(b => {
-      const building = this.add.image(b.x, b.y, b.key);
-      building.setScale(0.18);
-
       // Store position for agent navigation
       this.buildingPositions[b.activity] = { x: b.x, y: b.y + 30 };
 
