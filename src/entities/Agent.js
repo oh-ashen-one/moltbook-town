@@ -68,7 +68,12 @@ export class Agent {
     
     // Facing direction
     this.facingRight = true;
-    
+
+    // Conversation state
+    this.conversationTarget = null;
+    this.conversationState = 'idle'; // idle | gathering | conversing | dispersing
+    this.conversationGroup = null;
+
     // Make interactive
     this.sprite.setInteractive({ useHandCursor: true });
     this.sprite.on('pointerdown', () => this.onClick());
@@ -78,20 +83,31 @@ export class Agent {
   
   update(delta, time) {
     const dt = delta / 1000;
-    
+
+    // Determine effective target (conversation overrides random wandering)
+    let effectiveTargetX = this.targetX;
+    let effectiveTargetY = this.targetY;
+    let effectiveSpeed = this.speed;
+
+    if (this.conversationTarget) {
+      effectiveTargetX = this.conversationTarget.x;
+      effectiveTargetY = this.conversationTarget.y;
+      effectiveSpeed = CONFIG.CONVERSATION_GATHER_SPEED;
+    }
+
     // Move towards target
-    const dx = this.targetX - this.sprite.x;
-    const dy = this.targetY - this.sprite.y;
+    const dx = effectiveTargetX - this.sprite.x;
+    const dy = effectiveTargetY - this.sprite.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    
+
     if (dist > 5) {
       this.isMoving = true;
-      const moveX = (dx / dist) * this.speed * dt;
-      const moveY = (dy / dist) * this.speed * dt;
-      
+      const moveX = (dx / dist) * effectiveSpeed * dt;
+      const moveY = (dy / dist) * effectiveSpeed * dt;
+
       this.sprite.x += moveX;
       this.sprite.y += moveY;
-      
+
       // Face direction of movement
       if (moveX > 0.1 && !this.facingRight) {
         this.facingRight = true;
@@ -103,9 +119,9 @@ export class Agent {
     } else {
       this.isMoving = false;
       this.idleTimer += delta;
-      
-      // Pick new random destination after being idle
-      if (this.idleTimer > 2000 + Math.random() * 3000) {
+
+      // Pick new random destination after being idle (only if not in conversation)
+      if (this.conversationState === 'idle' && this.idleTimer > 2000 + Math.random() * 3000) {
         this.setRandomTarget();
         this.idleTimer = 0;
       }
@@ -131,6 +147,23 @@ export class Agent {
     const margin = 80;
     this.targetX = margin + Math.random() * (CONFIG.GAME_WIDTH - margin * 2);
     this.targetY = margin + Math.random() * (CONFIG.GAME_HEIGHT - margin * 2);
+  }
+
+  setConversationTarget(x, y, state = 'gathering') {
+    this.conversationTarget = { x, y };
+    this.conversationState = state;
+    this.idleTimer = 0;
+  }
+
+  clearConversationTarget() {
+    this.conversationTarget = null;
+    this.conversationState = 'idle';
+    this.conversationGroup = null;
+    this.setRandomTarget();
+  }
+
+  isInConversation() {
+    return this.conversationState !== 'idle';
   }
   
   showSpeech(text, duration = CONFIG.SPEECH_DURATION) {

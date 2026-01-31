@@ -3,6 +3,24 @@ export const CONFIG = {
   GAME_WIDTH: 960,
   GAME_HEIGHT: 640,
   TILE_SIZE: 32,
+
+  // Day/night cycle settings
+  DAY_CYCLE_DURATION: 60000, // 1 minute = full day
+  TIME_PHASES: {
+    DAWN:  { start: 0.0,  end: 0.15, tint: 0xffccaa, alpha: 0.3 },
+    DAY:   { start: 0.15, end: 0.5,  tint: 0xffffff, alpha: 0.0 },
+    DUSK:  { start: 0.5,  end: 0.65, tint: 0xff6644, alpha: 0.35 },
+    NIGHT: { start: 0.65, end: 1.0,  tint: 0x2233aa, alpha: 0.5 },
+  },
+
+  // Weather settings
+  WEATHER: {
+    CHANGE_INTERVAL: 45000, // weather changes every 45s
+    TYPES: ['clear', 'cloudy', 'rain', 'snow'],
+    RAIN_INTENSITY: 80,
+    SNOW_INTENSITY: 50,
+    CLOUD_COUNT: 4,
+  },
   
   // Town layout (in tiles)
   TOWN_WIDTH: 30,
@@ -38,5 +56,13 @@ export const CONFIG = {
     LIBRARY: { x: 25, y: 5, radius: 3 },
     PARK: { x: 5, y: 15, radius: 3 },
     WORKSHOP: { x: 25, y: 15, radius: 3 },
-  }
+  },
+
+  // Conversation clustering settings
+  CONVERSATION_CLUSTER_RADIUS: 45,
+  CONVERSATION_DURATION_MIN: 8000,
+  CONVERSATION_DURATION_MAX: 20000,
+  CONVERSATION_GATHER_SPEED: 80,
+  MAX_ACTIVE_CONVERSATIONS: 3,
+  CONVERSATION_CHECK_INTERVAL: 12000,
 };

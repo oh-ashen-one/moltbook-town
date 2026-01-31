@@ -2,42 +2,75 @@ import Phaser from 'phaser';
 import { CONFIG } from '../config.js';
 import { Agent } from '../entities/Agent.js';
 import { moltbookService } from '../services/moltbook.js';
+import { TimeManager } from '../managers/TimeManager.js';
+import { ConversationManager } from '../managers/ConversationManager.js';
+import { WeatherManager } from '../managers/WeatherManager.js';
 
 export class TownScene extends Phaser.Scene {
   constructor() {
     super({ key: 'TownScene' });
     this.agents = [];
     this.lastRefresh = 0;
+    this.windowLights = [];
+    this.stars = [];
   }
   
   async create() {
+    // Initialize time manager
+    this.timeManager = new TimeManager(this);
+
+    // Initialize conversation manager
+    this.conversationManager = new ConversationManager(this);
+
+    // Initialize weather manager
+    this.weatherManager = new WeatherManager(this);
+
     // Draw the town background
     this.drawTown();
-    
+
+    // Add stars (below lighting overlay)
+    this.createStars();
+
     // Load agents from Moltbook
     await this.loadAgents();
-    
+
     // Set up periodic refresh
     this.time.addEvent({
       delay: CONFIG.REFRESH_INTERVAL,
       callback: () => this.refreshActivity(),
       loop: true
     });
-    
+
     // Random speech bubbles
     this.time.addEvent({
       delay: 4000,
       callback: () => this.showRandomSpeech(),
       loop: true
     });
-    
+
+    // Trigger conversations periodically
+    this.time.addEvent({
+      delay: CONFIG.CONVERSATION_CHECK_INTERVAL,
+      callback: () => this.triggerConversation(),
+      loop: true
+    });
+
     // Agent click handler
     this.events.on('agentClicked', (agentData) => {
       this.showAgentPanel(agentData);
     });
-    
+
     // Add ambient particles
     this.addAmbientEffects();
+
+    // Add lighting overlay (on top of everything)
+    this.lightingOverlay = this.add.rectangle(
+      CONFIG.GAME_WIDTH / 2,
+      CONFIG.GAME_HEIGHT / 2,
+      CONFIG.GAME_WIDTH,
+      CONFIG.GAME_HEIGHT,
+      0x000000, 0
+    ).setDepth(1000);
   }
   
   drawTown() {
@@ -163,42 +196,46 @@ export class TownScene extends Phaser.Scene {
   
   drawBuilding(x, y, emoji, name, color, darkColor) {
     const g = this.add.graphics();
-    
+
     // Building shadow
     g.fillStyle(0x000000, 0.3);
     g.fillRect(x - 38, y - 28, 80, 65);
-    
+
     // Building base
     g.fillStyle(color);
     g.fillRect(x - 42, y - 32, 80, 60);
-    
+
     // Building border
     g.lineStyle(3, 0x000000);
     g.strokeRect(x - 42, y - 32, 80, 60);
-    
+
     // Roof
     g.fillStyle(darkColor);
     g.fillTriangle(x - 50, y - 32, x + 46, y - 32, x - 2, y - 55);
     g.lineStyle(2, 0x000000);
     g.strokeTriangle(x - 50, y - 32, x + 46, y - 32, x - 2, y - 55);
-    
+
     // Door
     g.fillStyle(0x3e2723);
     g.fillRect(x - 8, y + 5, 16, 22);
-    
-    // Window
+
+    // Windows (base layer - daytime appearance)
     g.fillStyle(0x87ceeb);
     g.fillRect(x + 15, y - 15, 15, 15);
     g.fillRect(x - 32, y - 15, 15, 15);
     g.lineStyle(2, 0x000000);
     g.strokeRect(x + 15, y - 15, 15, 15);
     g.strokeRect(x - 32, y - 15, 15, 15);
-    
+
+    // Window lights (overlay for night glow)
+    this.createWindowLight(x + 22.5, y - 7.5, 15, 15);
+    this.createWindowLight(x - 24.5, y - 7.5, 15, 15);
+
     // Emoji on building
     this.add.text(x - 2, y - 42, emoji, {
       fontSize: '20px',
     }).setOrigin(0.5);
-    
+
     // Name label
     this.add.text(x - 2, y + 38, name, {
       fontSize: '10px',
@@ -229,14 +266,14 @@ export class TownScene extends Phaser.Scene {
     const particles = this.add.particles(0, 0, 'particle', {
       // We'll create a simple particle texture
     });
-    
+
     // Create a simple particle texture
     const g = this.make.graphics({ add: false });
     g.fillStyle(0xffffff, 0.8);
     g.fillCircle(4, 4, 2);
     g.generateTexture('sparkle', 8, 8);
     g.destroy();
-    
+
     // Add floating sparkles
     for (let i = 0; i < 15; i++) {
       const x = Math.random() * CONFIG.GAME_WIDTH;
@@ -244,7 +281,7 @@ export class TownScene extends Phaser.Scene {
       const sparkle = this.add.image(x, y, 'sparkle');
       sparkle.setAlpha(0.3 + Math.random() * 0.4);
       sparkle.setScale(0.5 + Math.random() * 0.5);
-      
+
       // Float animation
       this.tweens.add({
         targets: sparkle,
@@ -256,6 +293,25 @@ export class TownScene extends Phaser.Scene {
         delay: Math.random() * 2000,
       });
     }
+  }
+
+  createStars() {
+    // Add twinkling stars (visible at night)
+    for (let i = 0; i < 40; i++) {
+      const star = this.add.circle(
+        Math.random() * CONFIG.GAME_WIDTH,
+        Math.random() * CONFIG.GAME_HEIGHT * 0.35,
+        1 + Math.random(),
+        0xffffff, 0
+      ).setDepth(999);
+      this.stars.push(star);
+    }
+  }
+
+  createWindowLight(x, y, w, h) {
+    const light = this.add.rectangle(x, y, w, h, 0xffee88, 0).setDepth(50);
+    this.windowLights.push(light);
+    return light;
   }
   
   async loadAgents() {
@@ -305,14 +361,22 @@ export class TownScene extends Phaser.Scene {
   
   showRandomSpeech() {
     if (this.agents.length === 0) return;
-    
-    // Pick a random agent that isn't already speaking
-    const available = this.agents.filter(a => !a.speechBubble);
+
+    // Pick a random agent that isn't already speaking and not in conversation
+    const available = this.agents.filter(a => !a.speechBubble && !a.isInConversation());
     if (available.length === 0) return;
-    
+
     const randomAgent = available[Math.floor(Math.random() * available.length)];
     if (randomAgent.data.recentPost) {
       randomAgent.showSpeech(randomAgent.data.recentPost.title);
+    }
+  }
+
+  async triggerConversation() {
+    // Try to start a new random conversation
+    const result = await this.conversationManager.triggerRandomConversation(this.agents);
+    if (result) {
+      console.log(`Started conversation: ${result.topic} with ${result.agents.length} agents`);
     }
   }
   
@@ -345,6 +409,33 @@ export class TownScene extends Phaser.Scene {
   }
   
   update(time, delta) {
+    // Guard against update running before create finishes
+    if (!this.timeManager || !this.lightingOverlay) return;
+
+    // Update time manager
+    this.timeManager.update(delta);
+
+    // Update lighting overlay
+    const lighting = this.timeManager.getCurrentLighting();
+    this.lightingOverlay.setFillStyle(lighting.tint, lighting.alpha);
+
+    // Update stars (twinkle at night)
+    const isNight = this.timeManager.isNightTime();
+    this.stars.forEach((star, i) => {
+      const twinkle = Math.sin(time / 300 + i * 0.7) * 0.3 + 0.7;
+      star.setAlpha(isNight ? twinkle : 0);
+    });
+
+    // Update window lights (glow at night)
+    const windowAlpha = isNight ? 0.85 : 0;
+    this.windowLights.forEach(light => light.setAlpha(windowAlpha));
+
+    // Update conversation manager
+    if (this.conversationManager) this.conversationManager.update(delta);
+
+    // Update weather
+    if (this.weatherManager) this.weatherManager.update(delta, time);
+
     // Update all agents
     this.agents.forEach(agent => agent.update(delta, time));
   }
