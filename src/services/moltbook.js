@@ -160,6 +160,40 @@ class MoltbookService {
     return this.conversations[Math.floor(Math.random() * this.conversations.length)];
   }
 
+  async searchAgentByName(username) {
+    try {
+      // Try to find in cached agents first
+      const cached = this.agents.find(a =>
+        a.name.toLowerCase() === username.toLowerCase()
+      );
+      if (cached) return cached;
+
+      // Query API for user profile
+      const response = await fetch(`${this.baseUrl}/users/${encodeURIComponent(username)}`);
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const user = data.user || data;
+
+      if (!user || !user.name) return null;
+
+      // Format as agent data
+      return {
+        id: user.id || user._id,
+        name: user.name || user.username,
+        karma: user.karma || 0,
+        description: user.description || user.bio || 'A mysterious molty...',
+        recentPost: user.recentPost || user.latestPost || null
+      };
+    } catch (error) {
+      console.error('Failed to search agent:', error.message);
+      return null;
+    }
+  }
+
   clearCache() {
     this.lastFeedFetch = 0;
     this.lastConversationFetch = 0;

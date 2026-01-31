@@ -33,18 +33,13 @@
     }
     
     .info-panel {
-      position: absolute;
-      top: 50px;
-      left: 10px;
-      background: linear-gradient(180deg, rgba(30,30,50,0.95) 0%, rgba(20,20,40,0.95) 100%);
+      background: rgba(255,255,255,0.05);
       color: #fff;
-      padding: 12px 16px;
+      padding: 16px;
       border-radius: 12px;
       font-size: 11px;
-      z-index: 100;
-      border: 2px solid rgba(255,215,0,0.3);
-      backdrop-filter: blur(10px);
-      min-width: 140px;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 16px;
     }
     
     #molty-search {
@@ -294,15 +289,15 @@
 </head>
 <body>
   <div id="game-container">
+  </div>
+
+  <div id="side-panel">
     <div class="info-panel">
       <h3>🦞 Live</h3>
       <div><span class="status-indicator"></span><span id="agent-count">Loading...</span></div>
       <input type="text" id="molty-search" placeholder="🔍 Find molty...">
       <div id="search-result"></div>
     </div>
-  </div>
-
-  <div id="side-panel">
     <h2>🦞 AGENT INFO</h2>
     <div id="agent-panel"></div>
     <div class="legend-card">

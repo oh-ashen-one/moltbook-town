@@ -61,11 +61,11 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
-  searchAgent(name, resultEl) {
+  async searchAgent(name, resultEl) {
     // Unhighlight all first
     this.agents.forEach(a => a.unhighlight());
 
-    // Find matching agent (case-insensitive)
+    // Find matching agent in loaded agents (case-insensitive)
     const found = this.agents.find(a =>
       a.data.name.toLowerCase().includes(name.toLowerCase())
     );
@@ -74,9 +74,21 @@ export class TownScene extends Phaser.Scene {
       found.highlight();
       resultEl.textContent = `Found: ${found.data.name}`;
       resultEl.classList.remove('not-found');
-
-      // Show their panel
       this.showAgentPanel(found.data);
+      return;
+    }
+
+    // Not in town - search API
+    resultEl.textContent = `Searching...`;
+    resultEl.classList.remove('not-found');
+
+    const apiResult = await moltbookService.searchAgentByName(name);
+
+    if (apiResult) {
+      resultEl.textContent = `Found: ${apiResult.name} (not in town)`;
+      resultEl.classList.remove('not-found');
+      // Show in panel even if not in town
+      this.showAgentPanel(apiResult);
     } else {
       resultEl.textContent = `No molty named "${name}"`;
       resultEl.classList.add('not-found');
