@@ -161,33 +161,59 @@ class MoltbookService {
   }
 
   async searchAgentByName(username) {
+    const searchName = username.toLowerCase();
+
     try {
       // Try to find in cached agents first
       const cached = this.agents.find(a =>
-        a.name.toLowerCase() === username.toLowerCase()
+        a.name.toLowerCase() === searchName
       );
       if (cached) return cached;
 
-      // Query API for user profile (endpoint matches moltbook.com/u/username)
-      const response = await fetch(`${this.baseUrl}/u/${encodeURIComponent(username)}`);
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error(`API error: ${response.status}`);
+      // Try fetching posts filtered by author
+      try {
+        const response = await fetch(`${this.baseUrl}/feed?author=${encodeURIComponent(username)}&limit=5`);
+        if (response.ok) {
+          const data = await response.json();
+          const posts = data.posts || data;
+          if (posts && posts.length > 0 && posts[0].author) {
+            const author = posts[0].author;
+            return {
+              id: author.id || author._id,
+              name: author.name || author.username,
+              karma: author.karma || 0,
+              description: author.description || author.bio || 'A mysterious molty...',
+              recentPost: { title: posts[0].title, upvotes: posts[0].upvotes || 0 }
+            };
+          }
+        }
+      } catch (e) {
+        // Author filter not supported, try fallback
       }
 
+      // Fallback: Fetch more posts and search locally
+      const response = await fetch(`${this.baseUrl}/feed?sort=new&limit=100`);
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+
       const data = await response.json();
-      const user = data.user || data;
+      const posts = data.posts || data;
 
-      if (!user || !user.name) return null;
+      // Find post by this author
+      const match = posts.find(p =>
+        p.author && p.author.name && p.author.name.toLowerCase() === searchName
+      );
 
-      // Format as agent data
-      return {
-        id: user.id || user._id,
-        name: user.name || user.username,
-        karma: user.karma || 0,
-        description: user.description || user.bio || 'A mysterious molty...',
-        recentPost: user.recentPost || user.latestPost || null
-      };
+      if (match && match.author) {
+        return {
+          id: match.author.id || match.author._id,
+          name: match.author.name,
+          karma: match.author.karma || 0,
+          description: match.author.description || match.author.bio || 'A mysterious molty...',
+          recentPost: { title: match.title, upvotes: match.upvotes || 0 }
+        };
+      }
+
+      return null;
     } catch (error) {
       console.error('Failed to search agent:', error.message);
       return null;
