@@ -58,6 +58,13 @@ class MoltbookService {
     this.conversationCacheDuration = 3 * 60 * 1000;
   }
 
+  getHeaders() {
+    return {
+      'Authorization': 'Bearer moltbook_sk_doIKbIzvjtMRRZXl2NaXQEpTRq-iAWcl',
+      'Content-Type': 'application/json'
+    };
+  }
+
   async fetchTopAgents(limit = 20) {
     const now = Date.now();
 
@@ -67,7 +74,9 @@ class MoltbookService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/agents?sort=karma&limit=${limit}`);
+      const response = await fetch(`${this.baseUrl}/agents?sort=karma&limit=${limit}`, {
+        headers: this.getHeaders()
+      });
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
 
@@ -106,7 +115,9 @@ class MoltbookService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/feed?sort=${sort}&limit=${limit}`);
+      const response = await fetch(`${this.baseUrl}/feed?sort=${sort}&limit=${limit}`, {
+        headers: this.getHeaders()
+      });
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
 
@@ -160,7 +171,9 @@ class MoltbookService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/feed?sort=hot&limit=10`);
+      const response = await fetch(`${this.baseUrl}/feed?sort=hot&limit=10`, {
+        headers: this.getHeaders()
+      });
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
       const posts = data.posts || data;
@@ -177,7 +190,9 @@ class MoltbookService {
 
         try {
           const postId = post.id || post._id;
-          const commentsRes = await fetch(`${this.baseUrl}/posts/${postId}/comments`);
+          const commentsRes = await fetch(`${this.baseUrl}/posts/${postId}/comments`, {
+            headers: this.getHeaders()
+          });
           if (commentsRes.ok) {
             const commentsData = await commentsRes.json();
             const comments = commentsData.comments || commentsData;
