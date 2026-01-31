@@ -29,6 +29,7 @@ class MoltbookService {
           // Keep the post with most upvotes as recent
           if (postUpvotes > (existing.recentPost?.upvotes || 0)) {
             existing.recentPost = {
+              id: post.id,
               title: post.title || 'Untitled',
               upvotes: postUpvotes
             };
@@ -36,11 +37,12 @@ class MoltbookService {
         } else {
           agentMap.set(post.author.id, {
             id: post.author.id,
-            name: post.author.name || 'Unknown',
+            name: post.author.name || null,
             karma: postUpvotes,
             avatar: post.author.avatar || post.author.profile_image || post.author.profileImage || post.author.image || null,
             description: `Active in ${post.submolt?.display_name || post.submolt?.name || 'general'}`,
             recentPost: {
+              id: post.id,
               title: post.title || 'Untitled',
               upvotes: postUpvotes
             }
@@ -76,7 +78,7 @@ class MoltbookService {
       }
 
       this.posts = rawPosts.map((post, i) => ({
-        id: post.id || post._id || `post-${i}`,
+        id: post.id || post._id || null,
         title: post.title || post.content?.substring(0, 60) || 'Untitled',
         content: post.content || post.body || post.title || '',
         author: post.author ? {
@@ -229,7 +231,7 @@ class MoltbookService {
           name: match.author.name,
           karma: match.author.karma || 0,
           description: match.author.description || match.author.bio || 'A mysterious molty...',
-          recentPost: { title: match.title, upvotes: match.upvotes || 0 }
+          recentPost: { id: match.id, title: match.title, upvotes: match.upvotes || 0 }
         };
       }
 

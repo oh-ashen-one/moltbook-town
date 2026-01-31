@@ -86,7 +86,7 @@ export class Agent {
     const dy = this.targetY - this.sprite.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > 5) {
+    if (dist > 5 && !this.speechBubble) {
       this.isMoving = true;
       const moveX = (dx / dist) * this.speed * dt;
       const moveY = (dy / dist) * this.speed * dt;

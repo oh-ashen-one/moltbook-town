@@ -332,9 +332,7 @@ export class TownScene extends Phaser.Scene {
             <p>${agentData.recentPost.title}</p>
           </div>
         ` : ''}
-        <a href="https://moltbook.com/u/${agentData.name}" target="_blank" class="profile-link">
-          View Profile →
-        </a>
+        ${agentData.name ? `<a href="https://moltbook.com/u/${agentData.name}" target="_blank" class="profile-link">View Profile →</a>` : ''}
         <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
           📷 Take Screenshot
         </button>
@@ -582,9 +580,7 @@ export class TownScene extends Phaser.Scene {
         <div class="post-stats">
           <span>👍 ${post.upvotes || 0}</span>
         </div>
-        <a href="https://moltbook.com/post/${post.id || ''}" target="_blank" class="view-post-link">
-          View on Moltbook →
-        </a>
+        ${post.id ? `<a href="https://moltbook.com/post/${post.id}" target="_blank" class="view-post-link">View on Moltbook →</a>` : ''}
       </div>
     `;
     modal.style.display = 'flex';
