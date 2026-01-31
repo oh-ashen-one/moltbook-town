@@ -86,7 +86,7 @@ export class Agent {
     const dy = this.targetY - this.sprite.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > 5 && !this.speechBubble) {
+    if (dist > 5 && (!this.speechBubble || this.isRacing)) {
       this.isMoving = true;
       const moveX = (dx / dist) * this.speed * dt;
       const moveY = (dy / dist) * this.speed * dt;
@@ -392,6 +392,146 @@ export class Agent {
       scale: this.baseScale,
       duration: 200,
     });
+  }
+
+  // Activity animations
+  dance(duration = 5000) {
+    if (this.isDancing) return;
+    this.isDancing = true;
+
+    // Show dance speech
+    this.showSpeech('💃 dancing!', 3000);
+
+    // Wiggle/rotate animation
+    this.danceTween = this.scene.tweens.add({
+      targets: this.sprite,
+      angle: { from: -15, to: 15 },
+      scaleX: { from: this.baseScale * 0.9, to: this.baseScale * 1.1 },
+      duration: 200,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Jump animation
+    this.danceJumpTween = this.scene.tweens.add({
+      targets: this.sprite,
+      y: this.sprite.y - 15,
+      duration: 300,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Power2'
+    });
+
+    // Stop after duration
+    this.scene.time.delayedCall(duration, () => this.stopDancing());
+  }
+
+  stopDancing() {
+    this.isDancing = false;
+    if (this.danceTween) {
+      this.danceTween.stop();
+      this.danceTween = null;
+    }
+    if (this.danceJumpTween) {
+      this.danceJumpTween.stop();
+      this.danceJumpTween = null;
+    }
+    // Reset sprite
+    this.sprite.setAngle(0);
+    this.sprite.setScale(this.baseScale);
+  }
+
+  fish(fountainX, fountainY, duration = 8000) {
+    if (this.isFishing) return;
+    this.isFishing = true;
+
+    // Move to fountain area (tighter grouping around center)
+    this.targetX = fountainX + (Math.random() - 0.5) * 50;
+    this.targetY = fountainY + (Math.random() - 0.5) * 40;
+    this.visitingBuilding = 'fountain';
+
+    // Wait to arrive then start fishing animation
+    this.scene.time.delayedCall(1500, () => {
+      if (!this.isFishing) return;
+      this.showSpeech('🎣 fishing...', 4000);
+
+      // Bobbing "casting" animation
+      this.fishTween = this.scene.tweens.add({
+        targets: this.sprite,
+        angle: { from: -5, to: 10 },
+        duration: 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+
+      // Random chance to catch something
+      this.scene.time.delayedCall(3000 + Math.random() * 3000, () => {
+        if (this.isFishing) {
+          const catches = ['🐟 caught a fish!', '🦐 caught a shrimp!', '👢 caught a boot...', '🌟 caught a star!', '💎 caught a gem!'];
+          this.showSpeech(catches[Math.floor(Math.random() * catches.length)], 2500);
+        }
+      });
+    });
+
+    // Stop after duration
+    this.scene.time.delayedCall(duration, () => this.stopFishing());
+  }
+
+  stopFishing() {
+    this.isFishing = false;
+    this.visitingBuilding = null;
+    if (this.fishTween) {
+      this.fishTween.stop();
+      this.fishTween = null;
+    }
+    this.sprite.setAngle(0);
+    this.setRandomTarget();
+  }
+
+  race(waypoints, onComplete) {
+    if (this.isRacing) return;
+    this.isRacing = true;
+    this.showSpeech('🏃 racing!', 2000);
+
+    // Increase speed for racing
+    const originalSpeed = this.speed;
+    this.speed = originalSpeed * 2.5;
+
+    // Follow waypoints
+    let waypointIndex = 0;
+    const moveToNextWaypoint = () => {
+      if (waypointIndex >= waypoints.length) {
+        // Race finished
+        this.isRacing = false;
+        this.speed = originalSpeed;
+        this.showSpeech('🏁 finished!', 2000);
+        if (onComplete) onComplete(this);
+        return;
+      }
+
+      const wp = waypoints[waypointIndex];
+      this.targetX = wp.x + (Math.random() - 0.5) * 20;
+      this.targetY = wp.y + (Math.random() - 0.5) * 20;
+      waypointIndex++;
+
+      // Check when we arrive at waypoint
+      const checkArrival = this.scene.time.addEvent({
+        delay: 100,
+        callback: () => {
+          const dx = this.targetX - this.sprite.x;
+          const dy = this.targetY - this.sprite.y;
+          if (Math.sqrt(dx * dx + dy * dy) < 20) {
+            checkArrival.remove();
+            moveToNextWaypoint();
+          }
+        },
+        loop: true
+      });
+    };
+
+    moveToNextWaypoint();
   }
 
   destroy() {

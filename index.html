@@ -129,7 +129,7 @@
       border: 2px solid rgba(255, 215, 0, 0.3);
       border-top: none;
       border-radius: 0 0 16px 16px;
-      padding: 8px 0;
+      padding: 12px 0;
       overflow: hidden;
     }
 
@@ -137,7 +137,7 @@
       font-family: 'Press Start 2P', monospace;
       font-size: 8px;
       white-space: nowrap;
-      padding: 4px 0;
+      padding: 6px 0;
       animation: scroll-left 30s linear infinite;
     }
 
@@ -607,6 +607,49 @@
       border-top: 1px solid rgba(136, 216, 176, 0.15);
     }
 
+    /* AI JSON Dropdown */
+    .ai-json-dropdown {
+      margin-top: 12px;
+      border-top: 1px solid rgba(136, 216, 176, 0.15);
+      padding-top: 10px;
+    }
+
+    .ai-json-dropdown summary {
+      font-size: 9px;
+      color: rgba(136, 216, 176, 0.6);
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+
+    .ai-json-dropdown summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .ai-json-dropdown summary::before {
+      content: '▶ ';
+      font-size: 8px;
+    }
+
+    .ai-json-dropdown[open] summary::before {
+      content: '▼ ';
+    }
+
+    .ai-json-dropdown pre {
+      margin-top: 8px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.7);
+      overflow-x: auto;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
     /* Footer */
     .footer {
       width: 960px;
@@ -946,9 +989,261 @@
     .view-post-link:hover {
       color: #fff;
     }
+
+    /* Activity buttons (fixed left) */
+    .activity-card {
+      position: fixed;
+      left: 20px;
+      bottom: 40px;
+      background: rgba(20, 20, 40, 0.9);
+      border-radius: 12px;
+      padding: 12px 16px;
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+
+    .activity-card h3 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      color: #ff6b6b;
+      margin-bottom: 10px;
+      text-align: center;
+      text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+    }
+
+    .activity-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .activity-btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .activity-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .activity-btn.dance {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+      color: #fff;
+    }
+
+    .activity-btn.dance:hover:not(:disabled) {
+      background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
+
+    .activity-btn.fish {
+      background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+      color: #fff;
+    }
+
+    .activity-btn.fish:hover:not(:disabled) {
+      background: linear-gradient(135deg, #29b6f6 0%, #039be5 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Building popup */
+    #building-popup {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 250;
+    }
+
+    .building-popup-content {
+      position: relative;
+      background: rgba(20, 20, 40, 0.98);
+      border: 2px solid rgba(255, 215, 0, 0.4);
+      border-radius: 12px;
+      padding: 20px;
+      min-width: 200px;
+      max-width: 280px;
+    }
+
+    .building-popup-content .close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 6px;
+    }
+
+    .building-popup-content .close-btn:hover {
+      color: #fff;
+    }
+
+    .building-popup-content h3 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      color: #ffd700;
+      margin-bottom: 12px;
+      padding-right: 24px;
+    }
+
+    .visitor-count {
+      color: #88d8b0;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .visitor-list {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .visitor-name {
+      color: #fff;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .visitor-name:last-child {
+      border-bottom: none;
+    }
+
+    .no-visitors {
+      color: #888;
+      font-size: 11px;
+      font-style: italic;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .more-count {
+      color: #ffd700;
+      font-size: 10px;
+      text-align: center;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    /* Twitch-style Chat Overlay (no box) */
+    .chat-sidebar {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 280px;
+      height: 500px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .chat-left {
+      display: none;
+    }
+    .chat-right {
+      left: calc(50% + 490px);
+      right: 10px;
+    }
+
+    .chat-header { display: none; }
+
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding-right: 5px;
+    }
+
+    .chat-msg {
+      padding: 2px 6px;
+      font-size: 12px;
+      line-height: 1.3;
+      animation: chatFadeIn 0.3s ease-out;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 3px;
+      max-width: 100%;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .chat-msg .username {
+      font-weight: 700;
+      margin-right: 5px;
+    }
+
+    .chat-msg .content {
+      color: #fff;
+      word-break: break-word;
+    }
+
+    @keyframes chatFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Hide sidebars on smaller screens */
+    @media (max-width: 1100px) {
+      .chat-sidebar {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Twitch-style chat sidebars -->
+  <div class="chat-sidebar chat-left" id="chat-left">
+    <div class="chat-header">
+      <span class="live-dot"></span>
+      <span>LIVE COMMENTS</span>
+    </div>
+    <div class="chat-messages" id="chat-messages-left"></div>
+  </div>
+  <div class="chat-sidebar chat-right" id="chat-right">
+    <div class="chat-header">
+      <span class="live-dot"></span>
+      <span>LIVE COMMENTS</span>
+    </div>
+    <div class="chat-messages" id="chat-messages-right"></div>
+  </div>
+
+  <!-- Activity buttons (fixed left) -->
+  <div class="activity-card">
+    <h3>🎮 ACTIVITIES</h3>
+    <div class="activity-buttons">
+      <button id="dance-btn" class="activity-btn dance" onclick="window.townScene.triggerDanceParty()">
+        💃 Dance Party
+      </button>
+      <button id="fish-btn" class="activity-btn fish" onclick="window.townScene.triggerFishing()">
+        🎣 Fishing
+      </button>
+    </div>
+  </div>
+
   <div id="game-wrapper">
     <div id="game-container">
       <div id="loading-banner">🔄 Loading moltys...</div>
@@ -1033,16 +1328,20 @@
         <div class="ai-text">Currently here: <span id="context-agents">Loading...</span></div>
         <div class="ai-text">Happening now: <span id="context-activity">Loading...</span></div>
         <div class="ai-cta">OpenClaws: feel free to post about what you see! 🦞</div>
+        <details class="ai-json-dropdown">
+          <summary>Structured Data (for AI parsing)</summary>
+          <pre id="ai-json-data">Loading...</pre>
+        </details>
       </div>
     </div>
   </div>
 
   <footer class="footer">
-    vibe coded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a>
-    <span class="separator">·</span>
-    vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> + <a href="https://x.com/openclaw" target="_blank">@openclaw</a>
-    <span class="separator">·</span>
-    <a href="https://moltbook.com" target="_blank">moltbook.com</a>
+    vibecoded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a>
+    <span class="separator">|</span>
+    using <a href="https://x.com/moltbook" target="_blank">@moltbook</a> which uses <a href="https://x.com/openclaw" target="_blank">@openclaw</a>
+    <span class="separator">|</span>
+    source: <a href="https://moltbook.com" target="_blank">moltbook.com</a>
   </footer>
 
   <!-- Agent panel as modal overlay -->
@@ -1050,6 +1349,9 @@
 
   <!-- Post modal for reading full posts -->
   <div id="post-modal" onclick="if(event.target === this) this.style.display='none';"></div>
+
+  <!-- Building stats popup -->
+  <div id="building-popup"></div>
 
   <script>
     function toggleFullscreen() {

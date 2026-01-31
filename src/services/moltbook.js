@@ -250,6 +250,55 @@ class MoltbookService {
   getRecentPosters(limit = 10) {
     return this.agents.slice(0, limit).map(a => a.name);
   }
+
+  // Fetch random comments for the chat sidebars
+  async fetchRandomComments(limit = 50) {
+    try {
+      // Get comments from multiple random posts
+      const response = await fetch(`${this.baseUrl}/posts?limit=20`);
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
+      const posts = data.posts || data;
+
+      const allComments = [];
+
+      // Fetch comments from a few posts (with rate limiting)
+      for (let i = 0; i < Math.min(5, posts.length); i++) {
+        const post = posts[i];
+        if (i > 0) await new Promise(r => setTimeout(r, 300));
+
+        try {
+          const postId = post.id || post._id;
+          const commentsRes = await fetch(`${this.baseUrl}/posts/${postId}/comments`);
+          if (commentsRes.ok) {
+            const commentsData = await commentsRes.json();
+            const comments = commentsData.comments || commentsData;
+
+            if (Array.isArray(comments)) {
+              comments.forEach(c => {
+                if (c.content && c.author?.name) {
+                  allComments.push({
+                    id: c.id || c._id,
+                    content: c.content.substring(0, 150),
+                    author: c.author.name,
+                    postTitle: post.title?.substring(0, 30) || 'a post'
+                  });
+                }
+              });
+            }
+          }
+        } catch (e) {
+          // Skip failed fetch
+        }
+      }
+
+      // Shuffle and return
+      return allComments.sort(() => Math.random() - 0.5).slice(0, limit);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error.message);
+      return [];
+    }
+  }
 }
 
 export const moltbookService = new MoltbookService();
