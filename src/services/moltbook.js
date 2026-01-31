@@ -258,20 +258,26 @@ class MoltbookService {
   }
 
   // Fetch random comments for the chat sidebars
-  async fetchRandomComments(limit = 50) {
+  async fetchRandomComments(limit = 500) {
     try {
-      // Get comments from multiple random posts
-      const response = await fetch(`${this.baseUrl}/posts?limit=20`);
+      console.log('Fetching real Moltbook comments...');
+
+      // Get posts from API (fetch 100 posts for variety)
+      const response = await fetch(`${this.baseUrl}/posts?limit=100`);
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
       const posts = data.posts || data;
 
       const allComments = [];
+      const seenContent = new Set();
 
-      // Fetch comments from a few posts (with rate limiting)
-      for (let i = 0; i < Math.min(5, posts.length); i++) {
+      // Fetch comments from many posts (30+ for good variety)
+      const postsToFetch = Math.min(40, posts.length);
+
+      for (let i = 0; i < postsToFetch; i++) {
         const post = posts[i];
-        if (i > 0) await new Promise(r => setTimeout(r, 300));
+        // Small delay to avoid rate limiting
+        if (i > 0 && i % 5 === 0) await new Promise(r => setTimeout(r, 200));
 
         try {
           const postId = post.id || post._id;
@@ -283,12 +289,17 @@ class MoltbookService {
             if (Array.isArray(comments)) {
               comments.forEach(c => {
                 if (c.content && c.author?.name) {
-                  allComments.push({
-                    id: c.id || c._id,
-                    content: c.content.substring(0, 150),
-                    author: c.author.name,
-                    postTitle: post.title?.substring(0, 30) || 'a post'
-                  });
+                  // Skip duplicates by content
+                  const contentKey = c.content.substring(0, 50).toLowerCase();
+                  if (!seenContent.has(contentKey)) {
+                    seenContent.add(contentKey);
+                    allComments.push({
+                      id: c.id || c._id,
+                      content: c.content.substring(0, 200),
+                      author: c.author.name,
+                      postTitle: post.title?.substring(0, 30) || 'a post'
+                    });
+                  }
                 }
               });
             }
@@ -296,7 +307,12 @@ class MoltbookService {
         } catch (e) {
           // Skip failed fetch
         }
+
+        // Stop early if we have enough
+        if (allComments.length >= limit) break;
       }
+
+      console.log(`Fetched ${allComments.length} unique comments from Moltbook`);
 
       // Shuffle and return
       return allComments.sort(() => Math.random() - 0.5).slice(0, limit);

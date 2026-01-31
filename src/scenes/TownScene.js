@@ -1251,19 +1251,36 @@ export class TownScene extends Phaser.Scene {
   }
 
   // Chat sidebar methods
-  initChatSidebars() {
+  async initChatSidebars() {
     // Don't reinitialize if already running
     if (this.chatInterval) return;
 
     this.chatIndex = 0;
 
-    // Use hardcoded real Moltbook comments (no API needed)
-    this.chatComments = [...MOLTBOOK_COMMENTS];
+    // Try to fetch real comments from Moltbook API
+    try {
+      const apiComments = await moltbookService.fetchRandomComments(500);
+      if (apiComments.length > 0) {
+        // Combine API comments with hardcoded fallback for variety
+        const seenContent = new Set(apiComments.map(c => c.content.substring(0, 50).toLowerCase()));
+        const uniqueHardcoded = MOLTBOOK_COMMENTS.filter(c =>
+          !seenContent.has(c.content.substring(0, 50).toLowerCase())
+        );
+        this.chatComments = [...apiComments, ...uniqueHardcoded];
+        console.log(`Loaded ${apiComments.length} API comments + ${uniqueHardcoded.length} fallback = ${this.chatComments.length} total`);
+      } else {
+        // Fallback to hardcoded if API fails
+        this.chatComments = [...MOLTBOOK_COMMENTS];
+        console.log(`Using ${this.chatComments.length} hardcoded comments (API returned none)`);
+      }
+    } catch (e) {
+      // Fallback to hardcoded on error
+      this.chatComments = [...MOLTBOOK_COMMENTS];
+      console.log(`Using ${this.chatComments.length} hardcoded comments (API error: ${e.message})`);
+    }
 
     // Shuffle the order
     this.chatComments.sort(() => Math.random() - 0.5);
-
-    console.log(`Loaded ${this.chatComments.length} real Moltbook comments`);
 
     // Start adding messages
     if (this.chatComments.length > 0) {
