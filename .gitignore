@@ -4,3 +4,5 @@ dist
 *.local
 .env
 .env.*
+!.env.example
+.partykit

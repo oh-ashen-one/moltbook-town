@@ -2,6 +2,9 @@ import Phaser from 'phaser';
 import { CONFIG } from '../config.js';
 import { Agent } from '../entities/Agent.js';
 import { moltbookService } from '../services/moltbook.js';
+import { ConversationManager } from '../managers/ConversationManager.js';
+import { partyClient } from '../services/partyClient.js';
+import { mafiaModal } from '../game/MafiaModal.js';
 
 // Real Moltbook comments - hardcoded for reliability
 const MOLTBOOK_COMMENTS = [
@@ -273,6 +276,32 @@ export class TownScene extends Phaser.Scene {
       callback: () => this.assignRandomActivity(),
       loop: true
     });
+
+    // Initialize conversation manager
+    this.conversationManager = new ConversationManager(this);
+
+    // Periodic conversation triggers (every 15-25 seconds)
+    this.time.addEvent({
+      delay: 15000 + Math.random() * 10000,
+      callback: () => {
+        if (this.agents.length >= 2) {
+          this.conversationManager.triggerRandomConversation(this.agents);
+        }
+      },
+      loop: true
+    });
+
+    // Action log for AI context
+    this.actionLog = [];
+
+    // Parse URL actions (for AI agents)
+    this.handleUrlActions();
+
+    // Setup multiplayer chat
+    this.setupMultiplayerChat();
+
+    // Initialize Mafia game modal
+    this.initMafiaGame();
   }
 
   setupSearch() {
@@ -545,6 +574,9 @@ export class TownScene extends Phaser.Scene {
 
       // Initialize chat sidebars with real Moltbook data
       this.initChatSidebars();
+
+      // Sync agents to PartyKit for AI personality context
+      this.syncAgentsToParty();
     } catch (error) {
       console.error('Failed to load agents:', error);
       document.getElementById('agent-count').textContent = 'Error loading agents';
@@ -627,6 +659,9 @@ export class TownScene extends Phaser.Scene {
       // Update AI agents context panel
       this.updateAgentContext();
 
+      // Sync agents to PartyKit for AI personality context
+      this.syncAgentsToParty();
+
       // Flash the AI card to show it updated
       const card = document.getElementById('agent-context');
       if (card) {
@@ -702,6 +737,17 @@ export class TownScene extends Phaser.Scene {
           </div>
         ` : ''}
         ${agentData.name ? `<a href="https://moltbook.com/u/${agentData.name}" target="_blank" class="profile-link">View Full Profile →</a>` : ''}
+        <div class="reaction-buttons">
+          <button class="reaction-btn" onclick="window.townScene.reactToAgent('wave')" title="Wave at ${agentData.name}">
+            👋 Wave
+          </button>
+          <button class="reaction-btn" onclick="window.townScene.reactToAgent('gift')" title="Gift a lobster">
+            🦞 Gift
+          </button>
+          <button class="reaction-btn" onclick="window.townScene.reactToAgent('cheer')" title="Cheer for ${agentData.name}">
+            ⭐ Cheer
+          </button>
+        </div>
         <div class="card-buttons">
           <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
             📷 Screenshot
@@ -807,6 +853,122 @@ export class TownScene extends Phaser.Scene {
     window.open(twitterUrl, '_blank');
   }
 
+  // React to the currently selected agent in the panel
+  reactToAgent(reactionType) {
+    if (!this.currentAgentData) return;
+
+    // Find the agent sprite
+    const targetAgent = this.agents.find(a =>
+      a.data.name === this.currentAgentData.name
+    );
+
+    if (!targetAgent) {
+      console.log('Agent not in town');
+      return;
+    }
+
+    switch (reactionType) {
+      case 'wave':
+        this.showWaveEffect(targetAgent);
+        this.addAction('wave', { to: targetAgent.data.name, from: 'visitor' });
+        break;
+
+      case 'gift':
+        this.showGiftEffect(targetAgent);
+        this.addAction('gift', { to: targetAgent.data.name, gift: 'lobster', from: 'visitor' });
+        break;
+
+      case 'cheer':
+        this.showCheerEffect(targetAgent);
+        this.addAction('cheer', { for: targetAgent.data.name, from: 'visitor' });
+        break;
+    }
+  }
+
+  showGiftEffect(agent) {
+    // Lobster emoji floats down to agent
+    const lobster = this.add.text(
+      agent.sprite.x,
+      agent.sprite.y - 100,
+      '🦞',
+      { fontSize: '32px' }
+    ).setOrigin(0.5);
+
+    this.tweens.add({
+      targets: lobster,
+      y: agent.sprite.y - 30,
+      duration: 800,
+      ease: 'Bounce.easeOut',
+      onComplete: () => {
+        // Sparkle effect
+        const sparkles = ['✨', '💫', '⭐'];
+        sparkles.forEach((s, i) => {
+          const spark = this.add.text(
+            agent.sprite.x + (i - 1) * 20,
+            agent.sprite.y - 30,
+            s,
+            { fontSize: '16px' }
+          ).setOrigin(0.5);
+
+          this.tweens.add({
+            targets: spark,
+            y: spark.y - 30,
+            alpha: 0,
+            duration: 600,
+            delay: i * 100,
+            onComplete: () => spark.destroy()
+          });
+        });
+
+        this.tweens.add({
+          targets: lobster,
+          alpha: 0,
+          scale: 1.5,
+          duration: 400,
+          delay: 300,
+          onComplete: () => lobster.destroy()
+        });
+      }
+    });
+
+    // Agent reaction
+    agent.showSpeech('🦞 thanks!', 3000);
+  }
+
+  showCheerEffect(agent) {
+    // Star burst around agent
+    const cheers = ['⭐', '🌟', '✨', '💫'];
+    const count = 8;
+
+    for (let i = 0; i < count; i++) {
+      const emoji = cheers[i % cheers.length];
+      const angle = (i / count) * Math.PI * 2;
+      const startRadius = 10;
+      const endRadius = 60;
+
+      const particle = this.add.text(
+        agent.sprite.x + Math.cos(angle) * startRadius,
+        agent.sprite.y + Math.sin(angle) * startRadius,
+        emoji,
+        { fontSize: '18px' }
+      ).setOrigin(0.5).setAlpha(0);
+
+      this.tweens.add({
+        targets: particle,
+        x: agent.sprite.x + Math.cos(angle) * endRadius,
+        y: agent.sprite.y + Math.sin(angle) * endRadius,
+        alpha: { from: 1, to: 0 },
+        duration: 800,
+        delay: i * 50,
+        ease: 'Power2',
+        onComplete: () => particle.destroy()
+      });
+    }
+
+    // Agent reaction
+    agent.showSpeech('🙌 wooo!', 3000);
+  }
+
   updateTicker(posts) {
     if (!posts || posts.length === 0) return;
 
@@ -886,6 +1048,11 @@ export class TownScene extends Phaser.Scene {
   update(time, delta) {
     // Update all agents
     this.agents.forEach(agent => agent.update(delta, time));
+
+    // Update conversation groups
+    if (this.conversationManager) {
+      this.conversationManager.update(delta);
+    }
   }
 
   setupAmbientSound() {
@@ -1026,24 +1193,47 @@ export class TownScene extends Phaser.Scene {
           } : null
         }));
 
+      // Get active conversations from manager
+      const activeConversations = this.conversationManager
+        ? Array.from(this.conversationManager.activeConversations.values()).map(g => ({
+            agents: g.agents.map(a => a.data.name),
+            topic: g.topic,
+            phase: g.phase
+          }))
+        : [];
+
       const jsonData = {
         site: {
           name: 'Moltbook Town',
           description: 'A live visualization of Moltbook activity. Moltbook is a social platform for AI agents (OpenClaws). Each character represents an AI agent who has posted recently.',
           url: 'https://moltbook.com',
-          buildings: ['Posting Station', 'Comment Corner', 'Doomscroll Den', 'Vibe Coding Lab', 'Molty Fountain']
+          buildings: ['Posting Station', 'Comment Corner', 'Doomscroll Den', 'Vibe Coding Lab', 'Molty Fountain'],
+          urlActions: {
+            description: 'AI agents can trigger actions by adding URL parameters',
+            examples: [
+              '?action=wave&target=AgentName - Wave at an agent',
+              '?action=cheer - Show celebration particles',
+              '?action=spotlight&target=AgentName - Highlight an agent',
+              '?action=gather&topic=YourTopic - Start a conversation',
+              '?action=dance - Trigger dance party'
+            ]
+          }
         },
         currentState: {
           totalAgents: this.agents.length,
           timestamp: new Date().toISOString(),
-          agents: agentData
+          agents: agentData,
+          activeConversations
         },
+        recentActions: (this.actionLog || []).slice(-10),
         suggestedActions: [
           'Post on Moltbook about visiting Moltbook Town',
           'Comment on a trending post you see in the ticker',
           'Share observations about which agents have high karma',
           'Describe the vibe of the town square',
-          agentData[0] ? `Give a shoutout to @${agentData[0].name} who is currently ${agentData[0].currentActivity}` : null
+          agentData[0] ? `Give a shoutout to @${agentData[0].name} who is currently ${agentData[0].currentActivity}` : null,
+          activeConversations.length > 0 ? `Join the conversation about "${activeConversations[0].topic}"` : null,
+          'Use URL params to interact: ?action=wave&target=AgentName'
         ].filter(Boolean)
       };
 
@@ -1248,5 +1438,638 @@ export class TownScene extends Phaser.Scene {
         btn.textContent = '🏃 Race';
       });
     }
+  }
+
+  // URL Action System - allows AI agents to trigger actions via URL parameters
+  handleUrlActions() {
+    const params = new URLSearchParams(window.location.search);
+    const action = params.get('action');
+    const target = params.get('target');
+    const topic = params.get('topic');
+
+    if (!action) return;
+
+    // Wait for agents to load before executing action
+    const executeAction = () => {
+      if (this.agents.length === 0) {
+        this.time.delayedCall(500, executeAction);
+        return;
+      }
+
+      console.log(`🎯 URL Action: ${action}`, { target, topic });
+
+      switch (action) {
+        case 'wave':
+          this.executeWaveAction(target);
+          break;
+        case 'cheer':
+          this.executeCheerAction();
+          break;
+        case 'spotlight':
+          this.executeSpotlightAction(target);
+          break;
+        case 'gather':
+          this.executeGatherAction(topic);
+          break;
+        case 'dance':
+          this.triggerDanceParty();
+          this.addAction('dance', { triggeredBy: 'url' });
+          break;
+        default:
+          console.log(`Unknown action: ${action}`);
+      }
+
+      // Clear URL params after execution
+      window.history.replaceState({}, document.title, window.location.pathname);
+    };
+
+    this.time.delayedCall(1000, executeAction);
+  }
+
+  executeWaveAction(targetName) {
+    if (!targetName) {
+      // Wave at a random agent
+      const randomAgent = this.agents[Math.floor(Math.random() * this.agents.length)];
+      if (randomAgent) {
+        this.showWaveEffect(randomAgent);
+        this.addAction('wave', { to: randomAgent.data.name });
+      }
+      return;
+    }
+
+    const targetAgent = this.agents.find(a =>
+      a.data.name.toLowerCase() === targetName.toLowerCase()
+    );
+
+    if (targetAgent) {
+      this.showWaveEffect(targetAgent);
+      this.addAction('wave', { to: targetAgent.data.name });
+    } else {
+      console.log(`Agent not found: ${targetName}`);
+    }
+  }
+
+  showWaveEffect(agent) {
+    // Create wave emoji particles floating up
+    const emojis = ['👋', '✨', '💫'];
+    emojis.forEach((emoji, i) => {
+      const text = this.add.text(
+        agent.sprite.x + (i - 1) * 15,
+        agent.sprite.y - 40,
+        emoji,
+        { fontSize: '20px' }
+      ).setOrigin(0.5);
+
+      this.tweens.add({
+        targets: text,
+        y: text.y - 50,
+        alpha: 0,
+        duration: 1500,
+        delay: i * 100,
+        ease: 'Power2',
+        onComplete: () => text.destroy()
+      });
+    });
+
+    // Agent reacts
+    agent.showSpeech('👋 hi!', 3000);
+  }
+
+  executeCheerAction() {
+    // Create cheer particles around the center
+    const centerX = CONFIG.GAME_WIDTH / 2;
+    const centerY = CONFIG.GAME_HEIGHT / 2;
+    const cheers = ['🎉', '🙌', '⭐', '🔥', '💫'];
+
+    for (let i = 0; i < 10; i++) {
+      const emoji = cheers[Math.floor(Math.random() * cheers.length)];
+      const angle = (i / 10) * Math.PI * 2;
+      const radius = 80 + Math.random() * 40;
+
+      const text = this.add.text(
+        centerX + Math.cos(angle) * radius,
+        centerY + Math.sin(angle) * radius,
+        emoji,
+        { fontSize: '24px' }
+      ).setOrigin(0.5).setAlpha(0);
+
+      this.tweens.add({
+        targets: text,
+        alpha: 1,
+        y: text.y - 30,
+        duration: 500,
+        delay: i * 50,
+        yoyo: true,
+        hold: 500,
+        onComplete: () => text.destroy()
+      });
+    }
+
+    this.addAction('cheer', {});
+  }
+
+  executeSpotlightAction(targetName) {
+    if (!targetName) return;
+
+    const targetAgent = this.agents.find(a =>
+      a.data.name.toLowerCase() === targetName.toLowerCase()
+    );
+
+    if (targetAgent) {
+      targetAgent.highlight();
+      this.showAgentPanel(targetAgent.data);
+      this.addAction('spotlight', { agent: targetAgent.data.name });
+
+      // Auto-unhighlight after 10 seconds
+      this.time.delayedCall(10000, () => {
+        targetAgent.unhighlight();
+      });
+    }
+  }
+
+  executeGatherAction(topic) {
+    if (!topic || this.agents.length < 2) return;
+
+    // Pick 2-4 random agents to start a conversation
+    const count = 2 + Math.floor(Math.random() * 3);
+    const selectedAgents = [...this.agents]
+      .filter(a => !a.isInConversation())
+      .sort(() => Math.random() - 0.5)
+      .slice(0, count);
+
+    if (selectedAgents.length >= 2) {
+      const convId = `url_${Date.now()}`;
+      this.conversationManager.startConversation(selectedAgents, topic, convId);
+      this.addAction('gather', {
+        agents: selectedAgents.map(a => a.data.name),
+        topic
+      });
+    }
+  }
+
+  // Add action to log for AI context
+  addAction(type, data) {
+    this.actionLog.push({
+      type,
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+
+    // Keep log at max 50 entries
+    if (this.actionLog.length > 50) {
+      this.actionLog.shift();
+    }
+
+    // Immediately update context so AI agents can see the action
+    this.updateAgentContext();
+  }
+
+  // ==========================================
+  // MULTIPLAYER CHAT SYSTEM
+  // ==========================================
+
+  setupMultiplayerChat() {
+    // Initialize state
+    this.chatConnected = false;
+    this.mentionDropdownVisible = false;
+    this.selectedMentionIndex = 0;
+    this.filteredAgents = [];
+
+    // Setup UI handlers
+    this.setupChatInput();
+
+    // Connect to PartyKit
+    this.connectToPartyKit();
+  }
+
+  connectToPartyKit() {
+    // Setup event listeners
+    partyClient.on("connected", (data) => {
+      console.log("Connected to chat as", data.userId);
+      this.chatConnected = true;
+      this.updateViewerCount("connecting...");
+      this.enableChatInput(true);
+    });
+
+    partyClient.on("disconnected", () => {
+      console.log("Disconnected from chat");
+      this.chatConnected = false;
+      this.updateViewerCount("offline");
+      this.enableChatInput(false);
+    });
+
+    partyClient.on("error", (data) => {
+      console.error("Chat error:", data.error);
+      if (data.fallback) {
+        // Still show local chat even if multiplayer fails
+        this.updateViewerCount("local mode");
+      }
+    });
+
+    partyClient.on("presence", (data) => {
+      this.updateViewerCount(`${data.count} online`);
+    });
+
+    partyClient.on("user_message", (data) => {
+      this.addMultiplayerChatMessage(data.userId, data.text, "user");
+    });
+
+    partyClient.on("avatar_response", (data) => {
+      this.handleAvatarResponse(data);
+    });
+
+    partyClient.on("system", (data) => {
+      this.addSystemMessage(data.text);
+    });
+
+    // Connect!
+    partyClient.connect();
+  }
+
+  setupChatInput() {
+    const input = document.getElementById("chat-input");
+    const sendBtn = document.getElementById("chat-send-btn");
+    const dropdown = document.getElementById("mention-dropdown");
+
+    if (!input || !sendBtn) return;
+
+    // Send on button click
+    sendBtn.addEventListener("click", () => this.sendChatMessage());
+
+    // Send on Enter key
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (this.mentionDropdownVisible && this.filteredAgents.length > 0) {
+          // Select the highlighted mention
+          this.selectMention(this.filteredAgents[this.selectedMentionIndex]);
+        } else {
+          this.sendChatMessage();
+        }
+      } else if (e.key === "ArrowDown" && this.mentionDropdownVisible) {
+        e.preventDefault();
+        this.selectedMentionIndex = Math.min(
+          this.selectedMentionIndex + 1,
+          this.filteredAgents.length - 1
+        );
+        this.updateMentionDropdown();
+      } else if (e.key === "ArrowUp" && this.mentionDropdownVisible) {
+        e.preventDefault();
+        this.selectedMentionIndex = Math.max(this.selectedMentionIndex - 1, 0);
+        this.updateMentionDropdown();
+      } else if (e.key === "Escape") {
+        this.hideMentionDropdown();
+      }
+    });
+
+    // @mention autocomplete
+    input.addEventListener("input", (e) => {
+      const value = e.target.value;
+      const cursorPos = e.target.selectionStart;
+
+      // Find @ symbol before cursor
+      const textBeforeCursor = value.substring(0, cursorPos);
+      const atMatch = textBeforeCursor.match(/@(\w*)$/);
+
+      if (atMatch) {
+        const searchTerm = atMatch[1].toLowerCase();
+        this.showMentionDropdown(searchTerm);
+      } else {
+        this.hideMentionDropdown();
+      }
+    });
+
+    // Click outside to close dropdown
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".chat-input-area")) {
+        this.hideMentionDropdown();
+      }
+    });
+  }
+
+  showMentionDropdown(searchTerm) {
+    const dropdown = document.getElementById("mention-dropdown");
+    if (!dropdown) return;
+
+    // Filter agents by search term
+    this.filteredAgents = this.agents
+      .filter(a => a.data.name.toLowerCase().includes(searchTerm))
+      .slice(0, 8);
+
+    if (this.filteredAgents.length === 0) {
+      this.hideMentionDropdown();
+      return;
+    }
+
+    this.selectedMentionIndex = 0;
+    this.mentionDropdownVisible = true;
+    this.updateMentionDropdown();
+    dropdown.classList.add("visible");
+  }
+
+  updateMentionDropdown() {
+    const dropdown = document.getElementById("mention-dropdown");
+    if (!dropdown) return;
+
+    dropdown.innerHTML = this.filteredAgents
+      .map((agent, i) => `
+        <div class="mention-option ${i === this.selectedMentionIndex ? 'selected' : ''}"
+             data-name="${agent.data.name}">
+          <span>@${agent.data.name}</span>
+          <span class="karma">${agent.data.karma || 0} karma</span>
+        </div>
+      `)
+      .join("");
+
+    // Add click handlers
+    dropdown.querySelectorAll(".mention-option").forEach((option) => {
+      option.addEventListener("click", () => {
+        const name = option.dataset.name;
+        const agent = this.agents.find(a => a.data.name === name);
+        if (agent) this.selectMention(agent);
+      });
+    });
+  }
+
+  selectMention(agent) {
+    const input = document.getElementById("chat-input");
+    if (!input || !agent) return;
+
+    // Replace the @partial with @fullname
+    const value = input.value;
+    const cursorPos = input.selectionStart;
+    const textBeforeCursor = value.substring(0, cursorPos);
+    const textAfterCursor = value.substring(cursorPos);
+
+    const newTextBefore = textBeforeCursor.replace(/@\w*$/, `@${agent.data.name} `);
+    input.value = newTextBefore + textAfterCursor;
+    input.focus();
+    input.selectionStart = input.selectionEnd = newTextBefore.length;
+
+    this.hideMentionDropdown();
+  }
+
+  hideMentionDropdown() {
+    const dropdown = document.getElementById("mention-dropdown");
+    if (dropdown) {
+      dropdown.classList.remove("visible");
+    }
+    this.mentionDropdownVisible = false;
+    this.filteredAgents = [];
+  }
+
+  sendChatMessage() {
+    const input = document.getElementById("chat-input");
+    if (!input) return;
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Send via PartyKit
+    if (partyClient.sendMessage(text)) {
+      input.value = "";
+      this.hideMentionDropdown();
+
+      // Show typing indicator while waiting for avatar response
+      if (text.includes("@")) {
+        this.showTypingIndicator();
+      }
+    } else {
+      // Fallback: just show locally if not connected
+      this.addMultiplayerChatMessage(partyClient.getUserId(), text, "user-self");
+    }
+  }
+
+  addMultiplayerChatMessage(username, text, type = "user") {
+    const container = document.getElementById("chat-messages-right");
+    if (!container) return;
+
+    const msgEl = document.createElement("div");
+    msgEl.className = `chat-msg ${type}`;
+
+    // Highlight if it's the current user
+    const isSelf = username === partyClient.getUserId();
+    if (isSelf) {
+      msgEl.classList.add("user-self");
+    }
+
+    const color = this.getUsernameColor(username);
+
+    msgEl.innerHTML = `
+      <span class="username" style="color: ${color}">${isSelf ? 'You' : username}</span>
+      <span class="content">${this.escapeHtml(text)}</span>
+    `;
+
+    // Check if user is near bottom before adding
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+
+    container.appendChild(msgEl);
+
+    // Remove old messages (keep max 30 for multiplayer)
+    while (container.children.length > 30) {
+      container.removeChild(container.firstChild);
+    }
+
+    if (isNearBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  addSystemMessage(text) {
+    const container = document.getElementById("chat-messages-right");
+    if (!container) return;
+
+    const msgEl = document.createElement("div");
+    msgEl.className = "chat-msg system";
+    msgEl.textContent = text;
+
+    container.appendChild(msgEl);
+
+    // Auto-scroll
+    container.scrollTop = container.scrollHeight;
+  }
+
+  handleAvatarResponse(data) {
+    // Hide typing indicator
+    this.hideTypingIndicator();
+
+    // Add message to chat
+    this.addAvatarChatMessage(data.avatar, data.text);
+
+    // Find the avatar and make it respond visually
+    const agent = this.agents.find(
+      a => a.data.name.toLowerCase() === data.avatar.toLowerCase()
+    );
+
+    if (agent) {
+      // Show speech bubble
+      agent.showSpeech(data.text, 6000);
+
+      // Trigger action animation
+      switch (data.action) {
+        case "wave":
+          this.showWaveEffect(agent);
+          break;
+        case "dance":
+          agent.dance(3000);
+          break;
+        case "laugh":
+          agent.showSpeech("😂 " + data.text, 4000);
+          this.showCheerEffect(agent);
+          break;
+        case "think":
+          agent.showSpeech("🤔 " + data.text, 5000);
+          break;
+        case "jump":
+          agent.jump();
+          break;
+      }
+
+      // Log the action
+      this.addAction("avatar_response", {
+        avatar: data.avatar,
+        action: data.action,
+        replyTo: data.replyTo
+      });
+    }
+  }
+
+  addAvatarChatMessage(avatarName, text) {
+    const container = document.getElementById("chat-messages-right");
+    if (!container) return;
+
+    const msgEl = document.createElement("div");
+    msgEl.className = "chat-msg avatar";
+
+    const color = this.getUsernameColor(avatarName);
+
+    msgEl.innerHTML = `
+      <span class="username" style="color: ${color}">@${avatarName}</span>
+      <span class="content">${this.escapeHtml(text)}</span>
+    `;
+
+    const isNearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 50;
+
+    container.appendChild(msgEl);
+
+    while (container.children.length > 30) {
+      container.removeChild(container.firstChild);
+    }
+
+    if (isNearBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }
+
+  showTypingIndicator() {
+    const indicator = document.getElementById("typing-indicator");
+    if (indicator) {
+      indicator.style.display = "block";
+      indicator.textContent = "Avatar is thinking";
+    }
+
+    // Auto-hide after 10 seconds (timeout)
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    this.typingTimeout = setTimeout(() => this.hideTypingIndicator(), 10000);
+  }
+
+  hideTypingIndicator() {
+    const indicator = document.getElementById("typing-indicator");
+    if (indicator) {
+      indicator.style.display = "none";
+    }
+    if (this.typingTimeout) clearTimeout(this.typingTimeout);
+  }
+
+  updateViewerCount(text) {
+    const el = document.getElementById("viewer-count");
+    if (el) {
+      el.textContent = text;
+    }
+  }
+
+  enableChatInput(enabled) {
+    const input = document.getElementById("chat-input");
+    const btn = document.getElementById("chat-send-btn");
+
+    if (input) {
+      input.disabled = !enabled;
+      input.placeholder = enabled
+        ? "@mention an avatar..."
+        : "Connecting...";
+    }
+    if (btn) {
+      btn.disabled = !enabled;
+    }
+  }
+
+  // Send agent data to PartyKit when agents are loaded/refreshed
+  syncAgentsToParty() {
+    if (this.agents.length > 0) {
+      partyClient.updateAgents(this.agents);
+      // Also sync to mafia game
+      mafiaModal.updateAgents(this.agents);
+    }
+  }
+
+  // ==========================================
+  // MAFIA GAME INTEGRATION
+  // ==========================================
+
+  initMafiaGame() {
+    // Initialize the mafia modal
+    mafiaModal.init();
+
+    // Expose to window for button onclick
+    window.mafiaModal = mafiaModal;
+
+    // Check for hourly game trigger
+    this.setupMafiaHourlyTrigger();
+
+    console.log('Mafia game initialized');
+  }
+
+  setupMafiaHourlyTrigger() {
+    // Check every minute if we're at the top of the hour
+    const checkHourly = () => {
+      const now = new Date();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+
+      // Trigger at :00 of each hour (with 30 second buffer)
+      if (minutes === 0 && seconds < 30) {
+        console.log('Hourly Mafia game trigger!');
+        this.startMafiaGame();
+      }
+    };
+
+    // Check every 30 seconds
+    this.time.addEvent({
+      delay: 30000,
+      callback: checkHourly,
+      loop: true
+    });
+
+    // Also check immediately
+    checkHourly();
+  }
+
+  // Manual trigger for testing
+  startMafiaGame() {
+    if (this.agents.length < 5) {
+      console.log('Not enough agents for Mafia game');
+      return;
+    }
+
+    // Sync latest agents
+    mafiaModal.updateAgents(this.agents);
+
+    // Start the game
+    mafiaModal.startGame();
+
+    // Open the modal
+    mafiaModal.open();
   }
 }

@@ -71,6 +71,11 @@ export class Agent {
     this.walkFrame = 0;
     this.walkTimer = 0;
 
+    // Conversation state
+    this.conversationState = null; // null | 'gathering' | 'conversing' | 'dispersing'
+    this.conversationGroup = null;
+    this.conversationTarget = null;
+
     // Make interactive
     this.sprite.setInteractive({ useHandCursor: true });
     this.sprite.on('pointerdown', () => this.onClick());
@@ -447,6 +452,22 @@ export class Agent {
     this.sprite.setScale(this.baseScale);
   }
 
+  // Simple jump animation (for avatar responses)
+  jump() {
+    const startY = this.sprite.y;
+
+    this.scene.tweens.add({
+      targets: this.sprite,
+      y: startY - 25,
+      duration: 150,
+      ease: 'Quad.easeOut',
+      yoyo: true,
+      onComplete: () => {
+        this.sprite.y = startY;
+      }
+    });
+  }
+
   fish(fountainX, fountainY, duration = 8000) {
     if (this.isFishing) return;
     this.isFishing = true;
@@ -537,6 +558,26 @@ export class Agent {
     };
 
     moveToNextWaypoint();
+  }
+
+  // Conversation methods for ConversationManager
+  isInConversation() {
+    return this.conversationState !== null;
+  }
+
+  setConversationTarget(x, y, state) {
+    this.conversationTarget = { x, y };
+    this.conversationState = state;
+    this.targetX = x;
+    this.targetY = y;
+  }
+
+  clearConversationTarget() {
+    this.conversationTarget = null;
+    this.conversationState = null;
+    this.conversationGroup = null;
+    // Set a new random target to disperse
+    this.setRandomTarget();
   }
 
   destroy() {
