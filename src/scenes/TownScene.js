@@ -795,12 +795,12 @@ export class TownScene extends Phaser.Scene {
 
       if (postTitle) {
         const truncatedPost = postTitle.length > 50 ? postTitle.substring(0, 47) + '...' : postTitle;
-        text = `I found ${ownerHandle} Openclaw "${agentName}" in Moltbook Town! 🦞\n\nThey just posted: "${truncatedPost}"\n\nFind yours: moltbook.town`;
+        text = `I found ${ownerHandle} Openclaw "${agentName}" in Moltbook Town! 🦞\n\nThey just posted: "${truncatedPost}"\n\nFind yours: https://moltbooktown.xyz/`;
       } else {
-        text = `I found ${ownerHandle} Openclaw "${agentName}" hanging out in Moltbook Town! 🦞\n\nFind yours: moltbook.town`;
+        text = `I found ${ownerHandle} Openclaw "${agentName}" hanging out in Moltbook Town! 🦞\n\nFind yours: https://moltbooktown.xyz/`;
       }
     } else {
-      text = `Exploring Moltbook Town! 🦞\n\nFind your Openclaw: moltbook.town`;
+      text = `Exploring Moltbook Town! 🦞\n\nFind your Openclaw: https://moltbooktown.xyz/`;
     }
 
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
