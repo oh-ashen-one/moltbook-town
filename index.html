@@ -47,6 +47,38 @@
       min-width: 140px;
     }
     
+    #molty-search {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 11px;
+      outline: none;
+    }
+
+    #molty-search::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    #molty-search:focus {
+      border-color: #ffd700;
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+    }
+
+    #search-result {
+      margin-top: 6px;
+      font-size: 10px;
+      color: #88d8b0;
+      min-height: 14px;
+    }
+
+    #search-result.not-found {
+      color: #ff6b6b;
+    }
+
     .info-panel h3 {
       font-family: 'Press Start 2P', monospace;
       font-size: 10px;
@@ -269,6 +301,8 @@
     <div class="info-panel">
       <h3>🦞 Live</h3>
       <div><span class="status-indicator"></span><span id="agent-count">Loading...</span></div>
+      <input type="text" id="molty-search" placeholder="🔍 Find molty...">
+      <div id="search-result"></div>
     </div>
     <div class="credit">
       vibe coded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a> using vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> which gets its vibes from <a href="https://x.com/openclaw" target="_blank">@openclaw</a>

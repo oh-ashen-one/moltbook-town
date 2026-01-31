@@ -38,6 +38,55 @@ export class TownScene extends Phaser.Scene {
     this.events.on('agentClicked', (agentData) => {
       this.showAgentPanel(agentData);
     });
+
+    // Setup molty search
+    this.setupSearch();
+  }
+
+  setupSearch() {
+    const searchInput = document.getElementById('molty-search');
+    const searchResult = document.getElementById('search-result');
+    let debounceTimer;
+
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const term = e.target.value.trim();
+        if (term) {
+          this.searchAgent(term, searchResult);
+        } else {
+          this.clearSearch(searchResult);
+        }
+      }, 300);
+    });
+  }
+
+  searchAgent(name, resultEl) {
+    // Unhighlight all first
+    this.agents.forEach(a => a.unhighlight());
+
+    // Find matching agent (case-insensitive)
+    const found = this.agents.find(a =>
+      a.data.name.toLowerCase().includes(name.toLowerCase())
+    );
+
+    if (found) {
+      found.highlight();
+      resultEl.textContent = `Found: ${found.data.name}`;
+      resultEl.classList.remove('not-found');
+
+      // Show their panel
+      this.showAgentPanel(found.data);
+    } else {
+      resultEl.textContent = `No molty named "${name}"`;
+      resultEl.classList.add('not-found');
+    }
+  }
+
+  clearSearch(resultEl) {
+    this.agents.forEach(a => a.unhighlight());
+    resultEl.textContent = '';
+    resultEl.classList.remove('not-found');
   }
 
   addBuildings() {

@@ -130,6 +130,11 @@ export class Agent {
       this.glow.setPosition(this.sprite.x, this.sprite.y);
     }
 
+    // Search glow follows agent
+    if (this.searchGlow) {
+      this.searchGlow.setPosition(this.sprite.x, this.sprite.y);
+    }
+
     this.nameLabel.setPosition(this.sprite.x, visualY - 20);
     this.karmaBadge.setPosition(this.sprite.x, visualY - 30);
   }
@@ -258,12 +263,60 @@ export class Agent {
     });
   }
 
+  highlight() {
+    // Add search highlight glow
+    if (!this.searchGlow) {
+      this.searchGlow = this.scene.add.circle(
+        this.sprite.x, this.sprite.y,
+        35 * this.baseScale, 0x00ff88, 0.5
+      ).setDepth(-2);
+
+      // Pulse animation
+      this.scene.tweens.add({
+        targets: this.searchGlow,
+        scale: 1.4,
+        alpha: 0.2,
+        duration: 500,
+        yoyo: true,
+        repeat: -1
+      });
+    }
+
+    // Scale up
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scale: this.baseScale * 1.3,
+      duration: 200,
+    });
+
+    // Show speech
+    if (this.data.recentPost) {
+      this.showSpeech(this.data.recentPost.title, 6000);
+    }
+  }
+
+  unhighlight() {
+    // Remove search glow
+    if (this.searchGlow) {
+      this.searchGlow.destroy();
+      this.searchGlow = null;
+    }
+
+    // Reset scale
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scale: this.baseScale,
+      duration: 200,
+    });
+  }
+
   destroy() {
     this.sprite.destroy();
     this.shadow.destroy();
     this.nameLabel.destroy();
     this.karmaBadge.destroy();
     if (this.glow) this.glow.destroy();
+    if (this.searchGlow) this.searchGlow.destroy();
     this.hideSpeech();
   }
 }
