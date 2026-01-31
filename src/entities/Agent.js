@@ -6,28 +6,29 @@ export class Agent {
     this.data = agentData;
     this.spriteKey = spriteKey;
 
-    // Scale based on karma (0.4 to 0.7 range)
-    const karmaScale = Math.min(0.7, 0.4 + (agentData.karma / 500) * 0.3);
+    // Scale based on karma (0.06 to 0.12 range - small cute sprites)
+    const karmaScale = Math.min(0.12, 0.06 + (agentData.karma / 500) * 0.06);
     this.baseScale = karmaScale;
 
     // Create the agent sprite
     this.sprite = scene.add.image(x, y, spriteKey);
     this.sprite.setScale(karmaScale);
+    this.sprite.setAlpha(0.9); // Slight transparency
 
     // Add glow for high-karma agents
     this.glow = null;
     if (agentData.karma > 200) {
       const glowColor = agentData.karma > 500 ? 0xffd700 : 0xaaddff;
-      const glowAlpha = Math.min(0.4, agentData.karma / 1500);
-      this.glow = scene.add.circle(x, y, 30 * karmaScale, glowColor, glowAlpha);
+      const glowAlpha = Math.min(0.3, agentData.karma / 2000);
+      this.glow = scene.add.circle(x, y, 20, glowColor, glowAlpha);
       this.glow.setDepth(-1);
     }
 
-    // Add shadow
-    this.shadow = scene.add.ellipse(x, y + 25, 30, 10, 0x000000, 0.3);
+    // Add shadow (smaller for tiny sprites)
+    this.shadow = scene.add.ellipse(x, y + 12, 15, 5, 0x000000, 0.25);
 
-    // Name label
-    this.nameLabel = scene.add.text(x, y - 40, agentData.name, {
+    // Name label (closer to sprite)
+    this.nameLabel = scene.add.text(x, y - 20, agentData.name, {
       fontSize: '9px',
       fontFamily: '"Press Start 2P", monospace',
       color: '#ffffff',
@@ -45,7 +46,7 @@ export class Agent {
       karmaDisplay = `✨ ${agentData.karma}`;
     }
 
-    this.karmaBadge = scene.add.text(x, y - 52, karmaDisplay, {
+    this.karmaBadge = scene.add.text(x, y - 30, karmaDisplay, {
       fontSize: '8px',
       fontFamily: 'Arial',
       color: '#ffd700',
@@ -121,7 +122,7 @@ export class Agent {
     const visualY = this.sprite.y + bob;
 
     // Update positions
-    this.shadow.setPosition(this.sprite.x, this.sprite.y + 25);
+    this.shadow.setPosition(this.sprite.x, this.sprite.y + 12);
     this.shadow.setScale(1 - Math.abs(bob) * 0.02, 1);
 
     // Glow follows agent
@@ -129,8 +130,8 @@ export class Agent {
       this.glow.setPosition(this.sprite.x, this.sprite.y);
     }
 
-    this.nameLabel.setPosition(this.sprite.x, visualY - 40);
-    this.karmaBadge.setPosition(this.sprite.x, visualY - 52);
+    this.nameLabel.setPosition(this.sprite.x, visualY - 20);
+    this.karmaBadge.setPosition(this.sprite.x, visualY - 30);
   }
 
   setRandomTarget() {
