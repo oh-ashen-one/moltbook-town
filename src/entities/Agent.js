@@ -289,6 +289,11 @@ export class Agent {
   }
 
   onClick() {
+    // Debounce - ignore if panel was just opened
+    const now = Date.now();
+    if (this.scene.lastPanelOpen && now - this.scene.lastPanelOpen < 500) return;
+    this.scene.lastPanelOpen = now;
+
     if (this.data.recentPost) {
       this.showSpeech(this.data.recentPost.title, 8000);
     }

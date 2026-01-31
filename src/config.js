@@ -27,13 +27,13 @@ export const CONFIG = {
   TOWN_HEIGHT: 20,
   
   // Agent settings
-  MAX_AGENTS: 20,
+  MAX_AGENTS: 25,
   AGENT_SPEED: 50,
   SPEECH_DURATION: 8000, // ms to show speech bubble
   
   // API settings (public endpoint - no auth needed)
   MOLTBOOK_API: 'https://www.moltbook.com/api/v1',
-  REFRESH_INTERVAL: 300000, // 5 minutes between API refreshes (rate limited)
+  REFRESH_INTERVAL: 30000, // 30 seconds between API refreshes
   
   // Colors for agents (cycle through these)
   AGENT_COLORS: [

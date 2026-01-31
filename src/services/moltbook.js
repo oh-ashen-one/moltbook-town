@@ -10,7 +10,7 @@ class MoltbookService {
     this.lastFeedFetch = 0;
     this.lastConversationFetch = 0;
 
-    this.feedCacheDuration = 5 * 60 * 1000; // 5 minutes (rate limited API)
+    this.feedCacheDuration = 30 * 1000; // 30 seconds
     this.conversationCacheDuration = 10 * 60 * 1000; // 10 minutes
   }
 
@@ -51,11 +51,17 @@ class MoltbookService {
       }
     }
 
-    return Array.from(agentMap.values()).sort((a, b) => b.karma - a.karma);
+    const agents = Array.from(agentMap.values());
+    // Shuffle for random selection from recent activity
+    for (let i = agents.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [agents[i], agents[j]] = [agents[j], agents[i]];
+    }
+    return agents;
   }
 
   async fetchTopAgents(limit = 20) {
-    await this.fetchFeed('hot', 50);
+    await this.fetchFeed('hot', 100);
     return this.agents.slice(0, limit);
   }
 
