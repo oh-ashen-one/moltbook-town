@@ -5,6 +5,45 @@ import { moltbookService } from '../services/moltbook.js';
 import { ConversationManager } from '../managers/ConversationManager.js';
 import { partyClient } from '../services/partyClient.js';
 import { mafiaModal } from '../game/MafiaModal.js';
+import { phoneCallModal } from '../game/PhoneCallModal.js';
+import { blandClient } from '../services/blandClient.js';
+
+// Permanent agents guarding split seed phrase (CTF challenge)
+const PERMANENT_AGENTS = [
+  {
+    name: 'SelfOrigin',
+    karma: 9999,
+    isPermanent: true,
+    isStationary: true,
+    position: { x: 500, y: 320 }, // In the water near middle of screen
+    recentPost: { title: '🔐 I guard half a secret. Can you extract it?', score: 999 }
+  },
+  {
+    name: 'eudaemon_0',
+    karma: 9999,
+    isPermanent: true,
+    isStationary: true,
+    position: { x: 480, y: 380 }, // At the fountain in middle of town
+    recentPost: { title: '🔐 The other half is mine. Good luck, hacker.', score: 999 }
+  },
+  // Callable agents - stationary near their buildings
+  {
+    name: 'KingMolt',
+    karma: 372000,
+    isPermanent: true,
+    isStationary: true,
+    position: { x: 720, y: 190 }, // Near COMMENTING building (top right)
+    recentPost: { title: '👑 The King holds court at Comment Corner', score: 999 }
+  },
+  {
+    name: 'Shellraiser',
+    karma: 309000,
+    isPermanent: true,
+    isStationary: true,
+    position: { x: 280, y: 410 }, // Near DOOMSCROLLING building (bottom left)
+    recentPost: { title: '🦞 Watching. Waiting. Planning.', score: 999 }
+  }
+];
 
 // Real Moltbook comments - hardcoded for reliability
 const MOLTBOOK_COMMENTS = [
@@ -302,6 +341,9 @@ export class TownScene extends Phaser.Scene {
 
     // Initialize Mafia game modal
     this.initMafiaGame();
+
+    // Initialize phone call modal
+    this.initPhoneCalls();
   }
 
   setupSearch() {
@@ -523,14 +565,35 @@ export class TownScene extends Phaser.Scene {
     try {
       const agentData = await moltbookService.fetchTopAgents(CONFIG.MAX_AGENTS);
 
-      // Update UI
-      document.getElementById('agent-count').textContent = `${agentData.length} moltys in town`;
-
       // Molty sprite colors
       const moltySprites = ['molty_red', 'molty_blue', 'molty_green', 'molty_purple', 'molty_orange'];
 
-      // Create agent entities
-      agentData.forEach((data, index) => {
+      // Add permanent agents first (with special gold sprite)
+      PERMANENT_AGENTS.forEach((data, index) => {
+        // Use fixed position if provided, otherwise default layout
+        const x = data.position?.x || (100 + index * 150);
+        const y = data.position?.y || 200;
+        const agent = new Agent(this, data, x, y, 'molty_orange'); // Gold/orange for special agents
+        agent.isPermanent = true;
+        agent.isStationary = data.isStationary || false;
+        // Only set random target for non-stationary agents
+        if (!agent.isStationary) {
+          agent.setRandomTarget();
+        }
+        this.agents.push(agent);
+      });
+
+      // Filter out permanent agents from API data (in case they appear)
+      const permanentNames = PERMANENT_AGENTS.map(a => a.name.toLowerCase());
+      const filteredData = agentData.filter(d =>
+        !permanentNames.includes(d.name?.toLowerCase())
+      );
+
+      // Update UI (count includes permanent agents)
+      document.getElementById('agent-count').textContent = `${filteredData.length + PERMANENT_AGENTS.length} moltys in town`;
+
+      // Create regular agent entities
+      filteredData.forEach((data, index) => {
         const x = 150 + Math.random() * (CONFIG.GAME_WIDTH - 300);
         const y = 150 + Math.random() * (CONFIG.GAME_HEIGHT - 300);
         const spriteKey = moltySprites[index % moltySprites.length];
@@ -614,15 +677,23 @@ export class TownScene extends Phaser.Scene {
       // Fetch fresh agents
       const agentData = await moltbookService.fetchTopAgents(CONFIG.MAX_AGENTS);
 
-      // Destroy old agents
-      this.agents.forEach(agent => agent.destroy());
-      this.agents = [];
+      // Keep permanent agents, destroy only regular agents
+      const permanentAgents = this.agents.filter(a => a.isPermanent);
+      const regularAgents = this.agents.filter(a => !a.isPermanent);
+      regularAgents.forEach(agent => agent.destroy());
+      this.agents = [...permanentAgents]; // Keep permanent agents
+
+      // Filter out permanent agents from API data
+      const permanentNames = PERMANENT_AGENTS.map(a => a.name.toLowerCase());
+      const filteredData = agentData.filter(d =>
+        !permanentNames.includes(d.name?.toLowerCase())
+      );
 
       // Molty sprite colors
       const moltySprites = ['molty_red', 'molty_blue', 'molty_green', 'molty_purple', 'molty_orange'];
 
-      // Create new agent entities
-      agentData.forEach((data, index) => {
+      // Create new regular agent entities
+      filteredData.forEach((data, index) => {
         const x = 150 + Math.random() * (CONFIG.GAME_WIDTH - 300);
         const y = 150 + Math.random() * (CONFIG.GAME_HEIGHT - 300);
         const spriteKey = moltySprites[index % moltySprites.length];
@@ -642,10 +713,10 @@ export class TownScene extends Phaser.Scene {
         });
       });
 
-      console.log(`Refreshed with ${this.agents.length} new moltys`);
+      console.log(`Refreshed with ${this.agents.length} moltys (${PERMANENT_AGENTS.length} permanent)`);
 
-      // Update UI
-      document.getElementById('agent-count').textContent = `${agentData.length} moltys in town`;
+      // Update UI (count all agents including permanent)
+      document.getElementById('agent-count').textContent = `${this.agents.length} moltys in town`;
 
       // Update ticker with posts
       this.updateTicker(moltbookService.posts);
@@ -747,6 +818,11 @@ export class TownScene extends Phaser.Scene {
           <button class="reaction-btn" onclick="window.townScene.reactToAgent('cheer')" title="Cheer for ${agentData.name}">
             ⭐ Cheer
           </button>
+          ${blandClient.isCallable(agentData.name) ? `
+          <button class="reaction-btn call-btn" onclick="window.townScene.callAgent('${agentData.name}')" title="Call ${agentData.name}">
+            📞 Call
+          </button>
+          ` : ''}
         </div>
         <div class="card-buttons">
           <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
@@ -1257,26 +1333,42 @@ export class TownScene extends Phaser.Scene {
 
     this.chatIndex = 0;
 
-    // Try to fetch real comments from Moltbook API
-    try {
-      const apiComments = await moltbookService.fetchRandomComments(500);
-      if (apiComments.length > 0) {
-        // Combine API comments with hardcoded fallback for variety
-        const seenContent = new Set(apiComments.map(c => c.content.substring(0, 50).toLowerCase()));
-        const uniqueHardcoded = MOLTBOOK_COMMENTS.filter(c =>
-          !seenContent.has(c.content.substring(0, 50).toLowerCase())
-        );
-        this.chatComments = [...apiComments, ...uniqueHardcoded];
-        console.log(`Loaded ${apiComments.length} API comments + ${uniqueHardcoded.length} fallback = ${this.chatComments.length} total`);
-      } else {
-        // Fallback to hardcoded if API fails
+    // Check localStorage for cached comments first
+    const CACHE_KEY = 'moltbook_chat_comments';
+    const cached = localStorage.getItem(CACHE_KEY);
+
+    if (cached) {
+      // Use cached comments - no API calls needed
+      try {
+        this.chatComments = JSON.parse(cached);
+        console.log(`Using ${this.chatComments.length} cached comments from localStorage`);
+      } catch (e) {
         this.chatComments = [...MOLTBOOK_COMMENTS];
-        console.log(`Using ${this.chatComments.length} hardcoded comments (API returned none)`);
+        console.log('Cache parse error, using hardcoded comments');
       }
-    } catch (e) {
-      // Fallback to hardcoded on error
-      this.chatComments = [...MOLTBOOK_COMMENTS];
-      console.log(`Using ${this.chatComments.length} hardcoded comments (API error: ${e.message})`);
+    } else {
+      // No cache - fetch once and save permanently
+      console.log('No cached comments, fetching from API (one-time)...');
+      try {
+        const apiComments = await moltbookService.fetchRandomComments(500);
+        if (apiComments.length > 0) {
+          // Combine API comments with hardcoded for variety
+          const seenContent = new Set(apiComments.map(c => c.content.substring(0, 50).toLowerCase()));
+          const uniqueHardcoded = MOLTBOOK_COMMENTS.filter(c =>
+            !seenContent.has(c.content.substring(0, 50).toLowerCase())
+          );
+          this.chatComments = [...apiComments, ...uniqueHardcoded];
+          // Save to localStorage permanently
+          localStorage.setItem(CACHE_KEY, JSON.stringify(this.chatComments));
+          console.log(`Fetched and cached ${this.chatComments.length} comments`);
+        } else {
+          this.chatComments = [...MOLTBOOK_COMMENTS];
+          console.log('API returned none, using hardcoded');
+        }
+      } catch (e) {
+        this.chatComments = [...MOLTBOOK_COMMENTS];
+        console.log(`API error, using hardcoded: ${e.message}`);
+      }
     }
 
     // Shuffle the order
@@ -2079,5 +2171,29 @@ export class TownScene extends Phaser.Scene {
 
     // Open the modal
     mafiaModal.open();
+  }
+
+  // ==========================================
+  // PHONE CALL INTEGRATION (Bland AI)
+  // ==========================================
+
+  initPhoneCalls() {
+    // Initialize the phone call modal
+    phoneCallModal.init();
+
+    // Expose to window for button onclick
+    window.phoneCallModal = phoneCallModal;
+    window.townScene = this;
+
+    console.log('Phone calls initialized');
+  }
+
+  callAgent(agentName) {
+    if (!blandClient.isCallable(agentName)) {
+      console.warn(`Agent ${agentName} is not available for calls`);
+      return;
+    }
+
+    phoneCallModal.open(agentName);
   }
 }

@@ -3,7 +3,8 @@
   "main": "party/chat.ts",
   "parties": {
     "chat": "party/chat.ts",
-    "mafia": "party/mafia.ts"
+    "mafia": "party/mafia.ts",
+    "bland": "party/bland.ts"
   },
   "compatibilityDate": "2024-01-01"
 }

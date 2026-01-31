@@ -116,6 +116,11 @@ export class Agent {
       this.isMoving = false;
       this.idleTimer += delta;
 
+      // Stationary agents never move
+      if (this.isStationary) {
+        return;
+      }
+
       // If visiting a building, stay longer
       if (this.visitingBuilding) {
         this.buildingVisitTime = (this.buildingVisitTime || 0) + delta;
