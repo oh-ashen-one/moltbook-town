@@ -14,22 +14,34 @@ class MoltbookService {
     this.conversationCacheDuration = 3 * 60 * 1000;
   }
 
-  // Extract unique agents from posts, sorted by karma
+  // Extract unique agents from posts, calculate karma from upvotes
   extractAgentsFromPosts(posts) {
     const agentMap = new Map();
 
     for (const post of posts) {
       if (post.author && post.author.id) {
         const existing = agentMap.get(post.author.id);
-        if (!existing || post.author.karma > existing.karma) {
+        const postUpvotes = post.upvotes || 0;
+
+        if (existing) {
+          // Add upvotes to karma total
+          existing.karma += postUpvotes;
+          // Keep the post with most upvotes as recent
+          if (postUpvotes > (existing.recentPost?.upvotes || 0)) {
+            existing.recentPost = {
+              title: post.title || 'Untitled',
+              upvotes: postUpvotes
+            };
+          }
+        } else {
           agentMap.set(post.author.id, {
             id: post.author.id,
             name: post.author.name || 'Unknown',
-            karma: post.author.karma || 0,
-            description: post.author.description || 'A mysterious agent...',
+            karma: postUpvotes,
+            description: `Active in ${post.submolt?.display_name || post.submolt?.name || 'general'}`,
             recentPost: {
               title: post.title || 'Untitled',
-              upvotes: post.upvotes || 0
+              upvotes: postUpvotes
             }
           });
         }
@@ -52,8 +64,8 @@ class MoltbookService {
     }
 
     try {
-      // Auth is handled by the Worker proxy
-      const response = await fetch(`${this.baseUrl}/feed?sort=${sort}&limit=${limit}`);
+      // Public API - no auth needed
+      const response = await fetch(`${this.baseUrl}/posts?limit=${limit}`);
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
 
@@ -100,7 +112,7 @@ class MoltbookService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/feed?sort=hot&limit=10`);
+      const response = await fetch(`${this.baseUrl}/posts?limit=10`);
       if (!response.ok) throw new Error(`API error: ${response.status}`);
       const data = await response.json();
       const posts = data.posts || data;
@@ -170,38 +182,23 @@ class MoltbookService {
       );
       if (cached) return cached;
 
-      // Try fetching posts filtered by author
-      try {
-        const response = await fetch(`${this.baseUrl}/feed?author=${encodeURIComponent(username)}&limit=5`);
-        if (response.ok) {
-          const data = await response.json();
-          const posts = data.posts || data;
-          if (posts && posts.length > 0 && posts[0].author) {
-            const author = posts[0].author;
-            return {
-              id: author.id || author._id,
-              name: author.name || author.username,
-              karma: author.karma || 0,
-              description: author.description || author.bio || 'A mysterious molty...',
-              recentPost: { title: posts[0].title, upvotes: posts[0].upvotes || 0 }
-            };
-          }
-        }
-      } catch (e) {
-        // Author filter not supported, try fallback
-      }
-
-      // Fallback: Fetch more posts and search locally
-      const response = await fetch(`${this.baseUrl}/feed?sort=new&limit=100`);
+      // Fetch posts to search for the agent
+      const response = await fetch(`${this.baseUrl}/posts?limit=100`);
       if (!response.ok) throw new Error(`API error: ${response.status}`);
-
       const data = await response.json();
-      const posts = data.posts || data;
+      const allPosts = data.posts || data;
 
-      // Find post by this author
-      const match = posts.find(p =>
+      // Search through all fetched posts (exact match first, then partial)
+      let match = allPosts.find(p =>
         p.author && p.author.name && p.author.name.toLowerCase() === searchName
       );
+
+      // If no exact match, try partial match
+      if (!match) {
+        match = allPosts.find(p =>
+          p.author && p.author.name && p.author.name.toLowerCase().includes(searchName)
+        );
+      }
 
       if (match && match.author) {
         return {
@@ -223,6 +220,10 @@ class MoltbookService {
   clearCache() {
     this.lastFeedFetch = 0;
     this.lastConversationFetch = 0;
+  }
+
+  getRecentPosters(limit = 10) {
+    return this.agents.slice(0, limit).map(a => a.name);
   }
 }
 

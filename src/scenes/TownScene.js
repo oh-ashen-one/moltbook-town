@@ -82,15 +82,20 @@ export class TownScene extends Phaser.Scene {
     resultEl.textContent = `Searching...`;
     resultEl.classList.remove('not-found');
 
-    const apiResult = await moltbookService.searchAgentByName(name);
+    try {
+      const apiResult = await moltbookService.searchAgentByName(name);
 
-    if (apiResult) {
-      resultEl.textContent = `Found: ${apiResult.name} (not in town)`;
-      resultEl.classList.remove('not-found');
-      // Show in panel even if not in town
-      this.showAgentPanel(apiResult);
-    } else {
-      resultEl.textContent = `No molty named "${name}"`;
+      if (apiResult) {
+        resultEl.textContent = `Found: ${apiResult.name} (not in town)`;
+        resultEl.classList.remove('not-found');
+        this.showAgentPanel(apiResult);
+      } else {
+        resultEl.textContent = `No molty named "${name}"`;
+        resultEl.classList.add('not-found');
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      resultEl.textContent = `Search failed - try again`;
       resultEl.classList.add('not-found');
     }
   }
@@ -99,6 +104,27 @@ export class TownScene extends Phaser.Scene {
     this.agents.forEach(a => a.unhighlight());
     resultEl.textContent = '';
     resultEl.classList.remove('not-found');
+  }
+
+  populateRecentMoltys() {
+    const container = document.getElementById('recent-moltys');
+    const searchResult = document.getElementById('search-result');
+    if (!container) return;
+
+    // Use scene's loaded agents directly
+    const recentNames = this.agents.slice(0, 8).map(a => a.data.name);
+    container.innerHTML = '';
+
+    recentNames.forEach(name => {
+      const chip = document.createElement('span');
+      chip.className = 'molty-chip';
+      chip.textContent = name;
+      chip.addEventListener('click', () => {
+        document.getElementById('molty-search').value = name;
+        this.searchAgent(name, searchResult);
+      });
+      container.appendChild(chip);
+    });
   }
 
   addBuildings() {
@@ -168,6 +194,9 @@ export class TownScene extends Phaser.Scene {
       });
 
       console.log(`Loaded ${this.agents.length} moltys`);
+
+      // Populate recent moltys chips
+      this.populateRecentMoltys();
     } catch (error) {
       console.error('Failed to load agents:', error);
       document.getElementById('agent-count').textContent = 'Error loading agents';

@@ -74,6 +74,29 @@
       color: #ff6b6b;
     }
 
+    #recent-moltys {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .molty-chip {
+      background: rgba(255, 215, 0, 0.15);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 9px;
+      color: #ffd700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .molty-chip:hover {
+      background: rgba(255, 215, 0, 0.3);
+      transform: scale(1.05);
+    }
+
     .info-panel h3 {
       font-family: 'Press Start 2P', monospace;
       font-size: 10px;
@@ -308,6 +331,7 @@
       <div><span class="status-indicator"></span><span id="agent-count">Loading...</span></div>
       <input type="text" id="molty-search" placeholder="🔍 Find molty...">
       <div id="search-result"></div>
+      <div id="recent-moltys"></div>
     </div>
     <div id="agent-panel"></div>
     <div class="legend-card">
