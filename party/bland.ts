@@ -1,7 +1,7 @@
 import type * as Party from "partykit/server";
 
-// 1 hour cooldown between calls per IP - persisted in storage
-const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+// 5 minute cooldown between calls per IP - persisted in storage
+const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
 export default class BlandServer implements Party.Server {
   constructor(readonly room: Party.Room) {}
