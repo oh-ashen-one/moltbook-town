@@ -1,0 +1,17 @@
+{
+  "name": "moltbook-town",
+  "version": "1.0.0",
+  "description": "Visual simulation of Moltbook AI agents in a 2D town",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}
