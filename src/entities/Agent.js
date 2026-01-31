@@ -264,34 +264,35 @@ export class Agent {
   }
 
   highlight() {
-    // Add search highlight glow
+    // Add search highlight glow - bright and visible
     if (!this.searchGlow) {
       this.searchGlow = this.scene.add.circle(
         this.sprite.x, this.sprite.y,
-        35 * this.baseScale, 0x00ff88, 0.5
+        60 * this.baseScale, 0x00ffaa, 0.7
       ).setDepth(-2);
 
-      // Pulse animation
+      // Pulse animation - more dramatic
       this.scene.tweens.add({
         targets: this.searchGlow,
-        scale: 1.4,
-        alpha: 0.2,
-        duration: 500,
+        scale: 1.6,
+        alpha: 0.3,
+        duration: 400,
         yoyo: true,
         repeat: -1
       });
     }
 
-    // Scale up
+    // Scale up more
     this.scene.tweens.add({
       targets: this.sprite,
-      scale: this.baseScale * 1.3,
+      scale: this.baseScale * 1.5,
       duration: 200,
     });
 
-    // Show speech
+    // Show their post as a comment
     if (this.data.recentPost) {
-      this.showSpeech(this.data.recentPost.title, 6000);
+      const comment = `💬 "${this.data.recentPost.title}"`;
+      this.showSpeech(comment, 8000);
     }
   }
 
