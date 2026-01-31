@@ -10,6 +10,8 @@ export class TownScene extends Phaser.Scene {
     this.buildingPositions = {};
     this.nextRefreshTime = 0;
     this.refreshTimer = null;
+    this.currentAgentData = null;
+    this.currentOwner = null;
   }
 
   create() {
@@ -151,6 +153,43 @@ export class TownScene extends Phaser.Scene {
     });
   }
 
+  updateLeaderboard() {
+    const topKarmaEl = document.getElementById('top-karma');
+    const mostActiveEl = document.getElementById('most-active');
+
+    if (!topKarmaEl || !mostActiveEl) return;
+
+    // Top Karma - already sorted by karma in service
+    const topKarma = this.agents.slice(0, 5);
+    if (topKarma.length > 0) {
+      topKarmaEl.innerHTML = topKarma.map((a, i) => `
+        <div class="entry">
+          <span class="name">${i + 1}. ${a.data.name}</span>
+          <span class="value">⭐${a.data.karma}</span>
+        </div>
+      `).join('');
+    } else {
+      topKarmaEl.innerHTML = '<div class="entry">No data yet</div>';
+    }
+
+    // Most Active - agents with recent posts (by upvotes as activity proxy)
+    const mostActive = [...this.agents]
+      .filter(a => a.data.recentPost)
+      .sort((a, b) => (b.data.recentPost?.upvotes || 0) - (a.data.recentPost?.upvotes || 0))
+      .slice(0, 5);
+
+    if (mostActive.length > 0) {
+      mostActiveEl.innerHTML = mostActive.map((a, i) => `
+        <div class="entry">
+          <span class="name">${i + 1}. ${a.data.name}</span>
+          <span class="value">+${a.data.recentPost?.upvotes || 0}</span>
+        </div>
+      `).join('');
+    } else {
+      mostActiveEl.innerHTML = '<div class="entry">No data yet</div>';
+    }
+  }
+
   addBuildings() {
     const buildings = [
       { key: 'building_posting', x: 100, y: 120, label: 'Posting', activity: 'posting' },
@@ -226,6 +265,12 @@ export class TownScene extends Phaser.Scene {
 
       // Populate recent moltys chips
       this.populateRecentMoltys();
+
+      // Update leaderboard
+      this.updateLeaderboard();
+
+      // Update AI-readable context panel
+      this.updateAgentContext();
 
       // Update ticker with posts
       this.updateTicker(moltbookService.posts);
@@ -308,6 +353,10 @@ export class TownScene extends Phaser.Scene {
     const panel = document.getElementById('agent-panel');
     if (!panel) return;
 
+    // Store current agent for share functionality
+    this.currentAgentData = agentData;
+    this.currentOwner = null;
+
     const inactiveNotice = isInactive ? `
       <div class="inactive-notice">
         😴 This molty hasn't posted recently!<br>
@@ -350,6 +399,7 @@ export class TownScene extends Phaser.Scene {
       
       if (ownerEl && profile && profile.owner) {
         const owner = profile.owner;
+        this.currentOwner = owner; // Store for share
         ownerEl.innerHTML = `
           <div class="owner-card">
             ${owner.x_avatar ? `<img src="${owner.x_avatar}" alt="${owner.x_name}" class="owner-avatar">` : ''}
@@ -409,8 +459,24 @@ export class TownScene extends Phaser.Scene {
   }
 
   shareToX() {
-    // Open Twitter with pre-filled text
-    const text = `Found my Openclaw in Moltbook Town! 🦞\n\nFind yours here: moltbooktown.com`;
+    // Build dynamic tweet based on current agent
+    let text;
+
+    if (this.currentAgentData) {
+      const agentName = this.currentAgentData.name || 'an Openclaw';
+      const ownerHandle = this.currentOwner?.x_handle ? `@${this.currentOwner.x_handle}'s` : "someone's";
+      const postTitle = this.currentAgentData.recentPost?.title;
+
+      if (postTitle) {
+        const truncatedPost = postTitle.length > 50 ? postTitle.substring(0, 47) + '...' : postTitle;
+        text = `I found ${ownerHandle} Openclaw "${agentName}" in Moltbook Town! 🦞\n\nThey just posted: "${truncatedPost}"\n\nFind yours: moltbook.town`;
+      } else {
+        text = `I found ${ownerHandle} Openclaw "${agentName}" hanging out in Moltbook Town! 🦞\n\nFind yours: moltbook.town`;
+      }
+    } else {
+      text = `Exploring Moltbook Town! 🦞\n\nFind your Openclaw: moltbook.town`;
+    }
+
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(twitterUrl, '_blank');
   }
@@ -584,5 +650,47 @@ export class TownScene extends Phaser.Scene {
       </div>
     `;
     modal.style.display = 'flex';
+  }
+
+  // Update the AI-readable context panel for OpenClaws browsing the page
+  updateAgentContext() {
+    const agentsEl = document.getElementById('context-agents');
+    const activityEl = document.getElementById('context-activity');
+
+    if (!agentsEl || !activityEl) return;
+
+    // List all agents currently in town
+    const agentNames = this.agents
+      .filter(a => a.data.name)
+      .map(a => '@' + a.data.name)
+      .slice(0, 15); // Limit to avoid huge lists
+
+    if (agentNames.length > 0) {
+      const moreCount = this.agents.length - agentNames.length;
+      agentsEl.textContent = agentNames.join(', ') + (moreCount > 0 ? ` and ${moreCount} more...` : '');
+    } else {
+      agentsEl.textContent = 'No agents loaded yet...';
+    }
+
+    // Describe current activities (agents visiting buildings)
+    const activities = this.agents
+      .filter(a => a.visitingBuilding && a.data.name)
+      .map(a => `@${a.data.name} is ${a.visitingBuilding}`)
+      .slice(0, 5);
+
+    if (activities.length > 0) {
+      activityEl.textContent = activities.join('; ');
+    } else {
+      activityEl.textContent = 'Everyone is wandering around the town square...';
+    }
+
+    // Also set up periodic updates
+    if (!this.contextUpdateTimer) {
+      this.contextUpdateTimer = this.time.addEvent({
+        delay: 5000,
+        callback: () => this.updateAgentContext(),
+        loop: true
+      });
+    }
   }
 }
