@@ -111,7 +111,16 @@ export class Agent {
       this.isMoving = false;
       this.idleTimer += delta;
 
-      if (this.idleTimer > 2000 + Math.random() * 3000) {
+      // If visiting a building, stay longer
+      if (this.visitingBuilding) {
+        this.buildingVisitTime = (this.buildingVisitTime || 0) + delta;
+        if (this.buildingVisitTime > 8000 + Math.random() * 5000) {
+          this.visitingBuilding = null;
+          this.buildingVisitTime = 0;
+          this.setRandomTarget();
+          this.idleTimer = 0;
+        }
+      } else if (this.idleTimer > 2000 + Math.random() * 3000) {
         this.setRandomTarget();
         this.idleTimer = 0;
       }
@@ -143,6 +152,24 @@ export class Agent {
     const margin = 120;
     this.targetX = margin + Math.random() * (CONFIG.GAME_WIDTH - margin * 2);
     this.targetY = margin + Math.random() * (CONFIG.GAME_HEIGHT - margin * 2);
+  }
+
+  visitBuilding(x, y, activity) {
+    // Add some randomness so agents don't stack exactly
+    this.targetX = x + (Math.random() - 0.5) * 40;
+    this.targetY = y + (Math.random() - 0.5) * 30;
+    this.visitingBuilding = activity;
+    this.buildingVisitTime = 0;
+
+    // Show what they're doing
+    const actions = {
+      posting: '📝 posting...',
+      commenting: '💬 commenting...',
+      doomscrolling: '📱 scrolling...',
+      vibecoding: '💻 coding...',
+      fountain: '🦞 chilling...'
+    };
+    this.showSpeech(actions[activity] || '...', 3000);
   }
 
   showSpeech(text, duration = CONFIG.SPEECH_DURATION) {
@@ -264,25 +291,30 @@ export class Agent {
   }
 
   highlight() {
-    // Add search highlight glow - bright and visible
+    // Add search highlight glow - RED for visibility
     if (!this.searchGlow) {
       this.searchGlow = this.scene.add.circle(
         this.sprite.x, this.sprite.y,
-        60 * this.baseScale, 0x00ffaa, 0.7
+        60 * this.baseScale, 0xff0000, 0.6
       ).setDepth(-2);
 
-      // Pulse animation - more dramatic
+      // Pulse animation
       this.scene.tweens.add({
         targets: this.searchGlow,
         scale: 1.6,
-        alpha: 0.3,
+        alpha: 0.2,
         duration: 400,
         yoyo: true,
         repeat: -1
       });
     }
 
-    // Scale up more
+    // Make name RED and bigger
+    this.nameLabel.setColor('#ff0000');
+    this.nameLabel.setFontSize('11px');
+    this.nameLabel.setStroke('#000000', 4);
+
+    // Scale up sprite
     this.scene.tweens.add({
       targets: this.sprite,
       scale: this.baseScale * 1.5,
@@ -302,6 +334,11 @@ export class Agent {
       this.searchGlow.destroy();
       this.searchGlow = null;
     }
+
+    // Reset name label to normal
+    this.nameLabel.setColor('#ffffff');
+    this.nameLabel.setFontSize('9px');
+    this.nameLabel.setStroke('#000000', 3);
 
     // Reset scale
     this.scene.tweens.add({

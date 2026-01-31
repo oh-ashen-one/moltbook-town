@@ -10,8 +10,8 @@ class MoltbookService {
     this.lastFeedFetch = 0;
     this.lastConversationFetch = 0;
 
-    this.feedCacheDuration = 30 * 1000;
-    this.conversationCacheDuration = 3 * 60 * 1000;
+    this.feedCacheDuration = 5 * 60 * 1000; // 5 minutes (rate limited API)
+    this.conversationCacheDuration = 10 * 60 * 1000; // 10 minutes
   }
 
   // Extract unique agents from posts, calculate karma from upvotes

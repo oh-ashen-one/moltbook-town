@@ -7,9 +7,15 @@ export class TownScene extends Phaser.Scene {
   constructor() {
     super({ key: 'TownScene' });
     this.agents = [];
+    this.buildingPositions = {};
+    this.nextRefreshTime = 0;
+    this.refreshTimer = null;
   }
 
   create() {
+    // Expose for share button
+    window.townScene = this;
+
     // Add map background
     const map = this.add.image(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT / 2, 'map');
     map.setDisplaySize(CONFIG.GAME_WIDTH, CONFIG.GAME_HEIGHT);
@@ -20,10 +26,18 @@ export class TownScene extends Phaser.Scene {
     // Load agents from Moltbook
     this.loadAgents();
 
-    // Set up periodic refresh
+    // Calculate time until next refresh based on last fetch (persists across page refreshes)
+    const lastFetch = parseInt(localStorage.getItem('lastMoltbookFetch') || '0');
+    const timeSinceLastFetch = Date.now() - lastFetch;
+    const timeUntilNextRefresh = Math.max(1000, CONFIG.REFRESH_INTERVAL - timeSinceLastFetch);
+
+    // Schedule first refresh
+    this.scheduleNextRefresh(timeUntilNextRefresh);
+
+    // Update countdown every second
     this.time.addEvent({
-      delay: CONFIG.REFRESH_INTERVAL,
-      callback: () => this.refreshActivity(),
+      delay: 1000,
+      callback: () => this.updateCountdown(),
       loop: true
     });
 
@@ -41,6 +55,13 @@ export class TownScene extends Phaser.Scene {
 
     // Setup molty search
     this.setupSearch();
+
+    // Periodic building visits
+    this.time.addEvent({
+      delay: 5000,
+      callback: () => this.assignRandomActivity(),
+      loop: true
+    });
   }
 
   setupSearch() {
@@ -86,11 +107,11 @@ export class TownScene extends Phaser.Scene {
       const apiResult = await moltbookService.searchAgentByName(name);
 
       if (apiResult) {
-        resultEl.textContent = `Found: ${apiResult.name} (not in town)`;
+        resultEl.innerHTML = `<span style="color:#ffd700">${apiResult.name}</span> hasn't posted recently!`;
         resultEl.classList.remove('not-found');
-        this.showAgentPanel(apiResult);
+        this.showAgentPanel(apiResult, true); // true = inactive
       } else {
-        resultEl.textContent = `No molty named "${name}"`;
+        resultEl.textContent = `No molty named "${name}" found`;
         resultEl.classList.add('not-found');
       }
     } catch (error) {
@@ -129,16 +150,19 @@ export class TownScene extends Phaser.Scene {
 
   addBuildings() {
     const buildings = [
-      { key: 'building_posting', x: 100, y: 120, label: 'Posting' },
-      { key: 'building_commenting', x: CONFIG.GAME_WIDTH - 100, y: 120, label: 'Commenting' },
-      { key: 'building_doomscrolling', x: 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Doomscrolling\nAI Slop' },
-      { key: 'building_vibecoding', x: CONFIG.GAME_WIDTH - 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Vibecoding' },
-      { key: 'building_fountain', x: CONFIG.GAME_WIDTH / 2, y: CONFIG.GAME_HEIGHT / 2 - 20, label: '' },
+      { key: 'building_posting', x: 100, y: 120, label: 'Posting', activity: 'posting' },
+      { key: 'building_commenting', x: CONFIG.GAME_WIDTH - 100, y: 120, label: 'Commenting', activity: 'commenting' },
+      { key: 'building_doomscrolling', x: 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Doomscrolling\nAI Slop', activity: 'doomscrolling' },
+      { key: 'building_vibecoding', x: CONFIG.GAME_WIDTH - 100, y: CONFIG.GAME_HEIGHT - 100, label: 'Vibecoding', activity: 'vibecoding' },
+      { key: 'building_fountain', x: CONFIG.GAME_WIDTH / 2, y: CONFIG.GAME_HEIGHT / 2 - 20, label: '', activity: 'fountain' },
     ];
 
     buildings.forEach(b => {
       const building = this.add.image(b.x, b.y, b.key);
-      building.setScale(0.18); // Small scale for large isometric images
+      building.setScale(0.18);
+
+      // Store position for agent navigation
+      this.buildingPositions[b.activity] = { x: b.x, y: b.y + 30 };
 
       if (b.label) {
         this.add.text(b.x, b.y + 45, b.label, {
@@ -163,6 +187,8 @@ export class TownScene extends Phaser.Scene {
   }
 
   async loadAgents() {
+    this.showBanner('🔄 Loading moltys...', 'loading');
+
     try {
       const agentData = await moltbookService.fetchTopAgents(CONFIG.MAX_AGENTS);
 
@@ -197,16 +223,51 @@ export class TownScene extends Phaser.Scene {
 
       // Populate recent moltys chips
       this.populateRecentMoltys();
+
+      // Update ticker with posts
+      this.updateTicker(moltbookService.posts);
+
+      // Only store fetch time if there isn't a recent one (preserves countdown across refreshes)
+      const lastFetch = parseInt(localStorage.getItem('lastMoltbookFetch') || '0');
+      const timeSinceLastFetch = Date.now() - lastFetch;
+      if (timeSinceLastFetch >= CONFIG.REFRESH_INTERVAL) {
+        localStorage.setItem('lastMoltbookFetch', Date.now().toString());
+      }
+      this.updateCountdown();
     } catch (error) {
       console.error('Failed to load agents:', error);
       document.getElementById('agent-count').textContent = 'Error loading agents';
+      this.showBanner('❌ Failed to load - retrying...', 'loading');
     }
   }
 
+  scheduleNextRefresh(delay = CONFIG.REFRESH_INTERVAL) {
+    // Cancel existing timer if any
+    if (this.refreshTimer) {
+      this.refreshTimer.remove();
+    }
+
+    // Set countdown target
+    this.nextRefreshTime = Date.now() + delay;
+
+    // Schedule next refresh
+    this.refreshTimer = this.time.delayedCall(delay, () => {
+      this.refreshActivity();
+    });
+  }
+
   async refreshActivity() {
+    // Store fetch time (persists across page refreshes)
+    localStorage.setItem('lastMoltbookFetch', Date.now().toString());
+
+    this.showBanner('🔄 Refreshing feed...', 'loading');
+
     try {
       console.log('Refreshing Moltbook activity...');
       const { posts } = await moltbookService.fetchFeed('new', 10);
+
+      // Update ticker
+      this.updateTicker(posts);
 
       // Show recent posts as speech bubbles
       posts.slice(0, 3).forEach((post, i) => {
@@ -219,7 +280,12 @@ export class TownScene extends Phaser.Scene {
       });
     } catch (error) {
       console.error('Failed to refresh activity:', error);
+      this.showBanner('❌ Refresh failed', 'loading');
     }
+
+    // Schedule next refresh (always reschedule, even on error)
+    this.scheduleNextRefresh();
+    this.updateCountdown();
   }
 
   showRandomSpeech() {
@@ -235,17 +301,21 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  showAgentPanel(agentData) {
-    // Hide instructions
-    const instructions = document.getElementById('instructions');
-    if (instructions) instructions.style.display = 'none';
-
-    // Update the side panel
+  showAgentPanel(agentData, isInactive = false) {
     const panel = document.getElementById('agent-panel');
     if (panel) {
+      const inactiveNotice = isInactive ? `
+        <div class="inactive-notice">
+          😴 This molty hasn't posted recently!<br>
+          <small>Try searching for an active molty in town</small>
+        </div>
+      ` : '';
+
       panel.innerHTML = `
-        <div class="agent-card">
+        <div class="agent-card ${isInactive ? 'inactive' : ''}">
+          <button class="close-btn" onclick="document.getElementById('agent-panel').style.display='none'; document.getElementById('molty-search').value=''; document.getElementById('search-result').textContent='';">✕</button>
           <h3>${agentData.name}</h3>
+          ${inactiveNotice}
           <div class="karma">⭐ ${agentData.karma} karma</div>
           <p class="description">${agentData.description || 'A mysterious molty...'}</p>
           ${agentData.recentPost ? `
@@ -257,9 +327,133 @@ export class TownScene extends Phaser.Scene {
           <a href="https://moltbook.com/u/${agentData.name}" target="_blank" class="profile-link">
             View Profile →
           </a>
+          <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
+            📷 Take Screenshot
+          </button>
+          <button class="share-btn" onclick="window.townScene.shareToX()">
+            🐦 Share to X
+          </button>
         </div>
       `;
       panel.style.display = 'block';
+    }
+  }
+
+  async copyScreenshot(btn) {
+    try {
+      const canvas = this.game.canvas;
+
+      // Convert canvas to blob and copy to clipboard
+      canvas.toBlob(async (blob) => {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+
+          // Show feedback
+          if (btn) {
+            const originalText = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            btn.classList.add('copied');
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.classList.remove('copied');
+            }, 2000);
+          }
+        } catch (err) {
+          console.error('Failed to copy:', err);
+          // Fallback: download instead
+          const link = document.createElement('a');
+          link.download = 'moltbook-town.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('Screenshot failed:', err);
+    }
+  }
+
+  shareToX() {
+    // Open Twitter with pre-filled text
+    const text = `Found my Openclaw in Moltbook Town! 🦞\n\nFind yours here: moltbooktown.com`;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(twitterUrl, '_blank');
+  }
+
+  updateTicker(posts) {
+    if (!posts || posts.length === 0) return;
+
+    // Update HTML ticker rows
+    for (let i = 0; i < 6; i++) {
+      const rowEl = document.getElementById(`ticker-row-${i + 1}`);
+      if (!rowEl) continue;
+
+      const rowPosts = posts.slice(i * 3, i * 3 + 3);
+      if (rowPosts.length > 0) {
+        const content = rowPosts.map(p => {
+          const title = (p.title || '...').substring(0, 30);
+          const upvotes = p.upvotes || 0;
+          const author = (p.author?.name || 'anon').substring(0, 12);
+          return `+${upvotes} ${title} @${author}`;
+        }).join('  ★  ');
+
+        // Duplicate content for seamless CSS animation loop
+        rowEl.textContent = content + '  ★  ' + content + '  ★  ' + content;
+      }
+    }
+  }
+
+  showBanner(text, type) {
+    const banner = document.getElementById('loading-banner');
+    if (!banner) return;
+
+    banner.textContent = text;
+    banner.className = type; // 'loading' or 'countdown'
+  }
+
+  updateCountdown() {
+    const banner = document.getElementById('loading-banner');
+    if (!banner) return;
+
+    const remaining = Math.max(0, this.nextRefreshTime - Date.now());
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    banner.innerHTML = `⏱️ Next refresh in ${timeStr} <span class="refresh-link" onclick="window.townScene.refreshActivity()">(refresh now)</span>`;
+    banner.className = 'countdown';
+  }
+
+  assignRandomActivity() {
+    if (this.agents.length === 0) return;
+
+    // Pick a random agent that isn't already visiting a building
+    const available = this.agents.filter(a => !a.visitingBuilding);
+    if (available.length === 0) return;
+
+    const agent = available[Math.floor(Math.random() * available.length)];
+
+    // Assign activity based on post content or random
+    const activities = ['posting', 'commenting', 'doomscrolling', 'vibecoding', 'fountain'];
+    let activity;
+
+    // Check post content for keywords
+    const postTitle = (agent.data.recentPost?.title || '').toLowerCase();
+    if (postTitle.includes('code') || postTitle.includes('bug') || postTitle.includes('dev')) {
+      activity = 'vibecoding';
+    } else if (postTitle.includes('comment') || postTitle.includes('reply')) {
+      activity = 'commenting';
+    } else if (agent.data.recentPost) {
+      activity = 'posting';
+    } else {
+      activity = activities[Math.floor(Math.random() * activities.length)];
+    }
+
+    const pos = this.buildingPositions[activity];
+    if (pos) {
+      console.log(`🦞 ${agent.data.name} → ${activity}`);
+      agent.visitBuilding(pos.x, pos.y, activity);
     }
   }
 

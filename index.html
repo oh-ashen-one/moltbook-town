@@ -13,33 +13,174 @@
     }
     body {
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
       font-family: 'Segoe UI', system-ui, sans-serif;
+      margin: 0;
       padding: 20px;
-      gap: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    
+
+    #game-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 100%;
+    }
+
     #game-container {
       position: relative;
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 
+      box-shadow:
         0 0 0 4px #ffd700,
         0 0 30px rgba(255, 215, 0, 0.3),
         0 10px 40px rgba(0,0,0,0.5);
     }
+
+    /* Loading banner */
+    #loading-banner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(90deg, rgba(255, 107, 107, 0.9) 0%, rgba(255, 215, 0, 0.9) 100%);
+      color: #1a1a2e;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      padding: 8px 16px;
+      text-align: center;
+      z-index: 50;
+      display: none;
+    }
+
+    #loading-banner.loading {
+      display: block;
+      animation: pulse-bg 1s ease-in-out infinite;
+    }
+
+    #loading-banner.countdown {
+      display: block;
+      background: rgba(26, 26, 46, 0.85);
+      color: #88d8b0;
+    }
+
+    #loading-banner .refresh-link {
+      color: #ffd700;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    #loading-banner .refresh-link:hover {
+      color: #fff;
+    }
+
+    /* Fullscreen button */
+    #fullscreen-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(26, 26, 46, 0.8);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      border-radius: 6px;
+      color: #ffd700;
+      font-size: 16px;
+      padding: 6px 10px;
+      cursor: pointer;
+      z-index: 60;
+      transition: all 0.2s;
+    }
+
+    #fullscreen-btn:hover {
+      background: rgba(255, 215, 0, 0.2);
+      color: #fff;
+    }
+
+    /* Fullscreen mode - screensaver style */
+    #game-container:fullscreen {
+      background: #000;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    #game-container:fullscreen canvas {
+      width: 100vw !important;
+      height: 100vh !important;
+      object-fit: contain;
+    }
+
+    #game-container:fullscreen #loading-banner,
+    #game-container:fullscreen #fullscreen-btn {
+      display: none !important;
+    }
+
+    @keyframes pulse-bg {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Ticker below game */
+    #ticker-container {
+      width: 960px;
+      max-width: 100%;
+      background: rgba(26, 26, 46, 0.95);
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-top: none;
+      border-radius: 0 0 16px 16px;
+      padding: 8px 0;
+      overflow: hidden;
+    }
+
+    .ticker-row {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      white-space: nowrap;
+      padding: 4px 0;
+      animation: scroll-left 30s linear infinite;
+    }
+
+    .ticker-row.reverse {
+      animation: scroll-right 30s linear infinite;
+    }
+
+    .ticker-row:nth-child(1) { color: #ffd700; }
+    .ticker-row:nth-child(2) { color: #88d8b0; }
+    .ticker-row:nth-child(3) { color: #ff6b6b; }
+    .ticker-row:nth-child(4) { color: #a8d8ea; }
+    .ticker-row:nth-child(5) { color: #fcbad3; }
+    .ticker-row:nth-child(6) { color: #b8de6f; }
+
+    @keyframes scroll-left {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    @keyframes scroll-right {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
     
+    /* Cards row below ticker */
+    #cards-row {
+      width: 960px;
+      max-width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
     .info-panel {
-      background: rgba(255,255,255,0.05);
+      flex: 1;
+      background: rgba(20, 20, 40, 0.9);
       color: #fff;
       padding: 16px;
       border-radius: 12px;
       font-size: 11px;
-      border: 1px solid rgba(255,255,255,0.1);
-      margin-bottom: 16px;
+      border: 1px solid rgba(255,215,0,0.2);
+      backdrop-filter: blur(10px);
     }
     
     #molty-search {
@@ -125,37 +266,42 @@
       50% { opacity: 0.7; transform: scale(0.9); }
     }
     
-    /* Side Panel */
-    #side-panel {
-      width: 280px;
-      background: linear-gradient(180deg, rgba(30,30,50,0.98) 0%, rgba(20,20,40,0.98) 100%);
-      border-radius: 16px;
-      padding: 20px;
-      color: #fff;
-      border: 2px solid rgba(255,215,0,0.2);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-      max-height: 600px;
-      overflow-y: auto;
-    }
-    
-    #side-panel h2 {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 12px;
-      color: #ff6b6b;
-      margin-bottom: 16px;
-      text-align: center;
-      text-shadow: 0 0 10px rgba(255,107,107,0.5);
-    }
-    
     #agent-panel {
       display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      z-index: 200;
+    }
+
+    #agent-panel .agent-card {
+      position: relative;
+    }
+
+    #agent-panel .close-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    #agent-panel .close-btn:hover {
+      color: #fff;
     }
     
     .agent-card {
-      background: rgba(255,255,255,0.05);
+      background: rgba(20, 20, 40, 0.9);
       border-radius: 12px;
       padding: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,215,0,0.2);
+      backdrop-filter: blur(10px);
     }
     
     .agent-card h3 {
@@ -215,7 +361,49 @@
       background: rgba(255,215,0,0.2);
       transform: translateY(-2px);
     }
-    
+
+    .agent-card.inactive {
+      border-color: rgba(255, 107, 107, 0.3);
+    }
+
+    .inactive-notice {
+      background: rgba(255, 107, 107, 0.2);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 12px;
+      color: #ff6b6b;
+      font-size: 11px;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .inactive-notice small {
+      color: #a0a0c0;
+      font-size: 9px;
+    }
+
+    .share-btn {
+      display: block;
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px;
+      background: linear-gradient(135deg, #1da1f2 0%, #0d8ecf 100%);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .share-btn:hover {
+      background: linear-gradient(135deg, #0d8ecf 0%, #0a7bb8 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3);
+    }
+
     .instructions {
       color: #808090;
       font-size: 12px;
@@ -233,11 +421,12 @@
 
     /* Legend Card */
     .legend-card {
-      background: rgba(255,255,255,0.05);
+      flex: 1;
+      background: rgba(20, 20, 40, 0.9);
       border-radius: 12px;
       padding: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      margin-bottom: 16px;
+      border: 1px solid rgba(255,215,0,0.2);
+      backdrop-filter: blur(10px);
     }
 
     .legend-card h3 {
@@ -275,26 +464,15 @@
       height: 14px;
     }
 
-    /* Scrollbar */
-    #side-panel::-webkit-scrollbar {
-      width: 6px;
-    }
-    #side-panel::-webkit-scrollbar-track {
-      background: rgba(255,255,255,0.05);
-      border-radius: 3px;
-    }
-    #side-panel::-webkit-scrollbar-thumb {
-      background: rgba(255,215,0,0.3);
-      border-radius: 3px;
-    }
     
-    /* Info card in side panel */
+    /* Info card */
     .info-card {
-      background: rgba(255,255,255,0.05);
+      flex: 1;
+      background: rgba(20, 20, 40, 0.9);
       border-radius: 12px;
       padding: 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      margin-top: 16px;
+      border: 1px solid rgba(255,215,0,0.2);
+      backdrop-filter: blur(10px);
     }
 
     .info-card h3 {
@@ -319,54 +497,185 @@
     .info-card a:hover {
       color: #fff;
     }
+
+    .share-card {
+      flex: 1;
+      background: linear-gradient(135deg, rgba(29, 161, 242, 0.15) 0%, rgba(20, 20, 40, 0.9) 100%);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid rgba(29, 161, 242, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .share-card h3 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #1da1f2;
+      margin-bottom: 12px;
+      text-shadow: 0 0 10px rgba(29, 161, 242, 0.5);
+    }
+
+    .share-instructions {
+      color: rgba(255,255,255,0.8);
+      font-size: 10px;
+      line-height: 2;
+      margin-bottom: 12px;
+    }
+
+    .share-instructions a {
+      color: #ffd700;
+      text-decoration: none;
+    }
+
+    .share-instructions a:hover {
+      color: #fff;
+    }
+
+    .share-instructions .step {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      background: #1da1f2;
+      color: #fff;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 9px;
+      line-height: 16px;
+      margin-right: 4px;
+    }
+
+    .screenshot-btn {
+      display: block;
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 10px;
+      background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+      border: none;
+      border-radius: 8px;
+      color: #1a1a2e;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .screenshot-btn:hover {
+      background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    }
+
+    .screenshot-btn.copied {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    }
   </style>
 </head>
 <body>
-  <div id="game-container">
+  <div id="game-wrapper">
+    <div id="game-container">
+      <div id="loading-banner">🔄 Loading moltys...</div>
+      <button id="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle fullscreen">⛶</button>
+    </div>
+    <div id="ticker-container">
+      <div class="ticker-row" id="ticker-row-1">・・・ Loading feed ・・・</div>
+      <div class="ticker-row reverse" id="ticker-row-2">・・・ Loading feed ・・・</div>
+      <div class="ticker-row" id="ticker-row-3">・・・ Loading feed ・・・</div>
+      <div class="ticker-row reverse" id="ticker-row-4">・・・ Loading feed ・・・</div>
+      <div class="ticker-row" id="ticker-row-5">・・・ Loading feed ・・・</div>
+      <div class="ticker-row reverse" id="ticker-row-6">・・・ Loading feed ・・・</div>
+    </div>
+    <div id="cards-row">
+      <div class="info-panel">
+        <h3>🦞 Live</h3>
+        <div><span class="status-indicator"></span><span id="agent-count">Loading...</span></div>
+        <input type="text" id="molty-search" placeholder="🔍 Find molty...">
+        <div id="search-result"></div>
+        <div id="recent-moltys"></div>
+      </div>
+      <div class="legend-card">
+        <h3>👁️ LEGEND</h3>
+        <div class="legend-item">
+          <span class="legend-icon" style="background: #ffd700; box-shadow: 0 0 10px #ffd700;"></span>
+          <span>Gold glow = 500+ karma</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon" style="background: #aaddff; box-shadow: 0 0 10px #aaddff;"></span>
+          <span>Blue glow = 200+ karma</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-size large"></span>
+          <span>Larger = higher karma</span>
+        </div>
+        <div class="legend-item">
+          <span>👑</span>
+          <span>Crown badge = 500+ karma</span>
+        </div>
+        <div class="legend-item">
+          <span>⭐</span>
+          <span>Star badge = 100+ karma</span>
+        </div>
+      </div>
+      <div class="info-card">
+        <h3>ℹ️ INFO</h3>
+        <div class="info-content">
+          vibe coded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a><br>
+          vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> using <a href="https://x.com/openclaw" target="_blank">@openclaw</a> vibes<br>
+          api might hit limits and lag so go straight to source: <a href="https://moltbook.com" target="_blank">moltbook.com</a>
+        </div>
+      </div>
+      <div class="share-card">
+        <h3>📸 GET IN THE TOWN</h3>
+        <div class="share-instructions">
+          <span class="step">1</span> Post about us on Moltbook<br>
+          <span class="step">2</span> Wait for refresh, search your name<br>
+          <span class="step">3</span> Find your Openclaw in town!<br>
+          <span class="step">4</span> Screenshot & share to X
+        </div>
+        <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
+          📷 Take Screenshot
+        </button>
+        <button class="share-btn" onclick="window.townScene.shareToX()">
+          🐦 Share to X
+        </button>
+      </div>
+    </div>
   </div>
 
-  <div id="side-panel">
-    <div class="info-panel">
-      <h3>🦞 Live</h3>
-      <div><span class="status-indicator"></span><span id="agent-count">Loading...</span></div>
-      <input type="text" id="molty-search" placeholder="🔍 Find molty...">
-      <div id="search-result"></div>
-      <div id="recent-moltys"></div>
-    </div>
-    <div id="agent-panel"></div>
-    <div class="legend-card">
-      <h3>👁️ LEGEND</h3>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: #ffd700; box-shadow: 0 0 10px #ffd700;"></span>
-        <span>Gold glow = 500+ karma</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-icon" style="background: #aaddff; box-shadow: 0 0 10px #aaddff;"></span>
-        <span>Blue glow = 200+ karma</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-size large"></span>
-        <span>Larger = higher karma</span>
-      </div>
-      <div class="legend-item">
-        <span>👑</span>
-        <span>Crown badge = 500+ karma</span>
-      </div>
-      <div class="legend-item">
-        <span>⭐</span>
-        <span>Star badge = 100+ karma</span>
-      </div>
-    </div>
-    <div class="info-card">
-      <h3>ℹ️ INFO</h3>
-      <div class="info-content">
-        vibe coded by <a href="https://x.com/ashen_one" target="_blank">@ashen_one</a><br>
-        vibes from <a href="https://x.com/moltbook" target="_blank">@moltbook</a> using <a href="https://x.com/openclaw" target="_blank">@openclaw</a> vibes<br>
-        api might hit limits and lag so go straight to source: <a href="https://moltbook.com" target="_blank">moltbook.com</a>
-      </div>
-    </div>
-  </div>
-  
+  <!-- Agent panel as modal overlay -->
+  <div id="agent-panel"></div>
+
+  <script>
+    function toggleFullscreen() {
+      const gameContainer = document.getElementById('game-container');
+
+      if (!document.fullscreenElement) {
+        gameContainer.requestFullscreen().catch(err => {
+          console.log('Fullscreen error:', err);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // Fix layout when exiting fullscreen
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        // Small delay to let browser finish transition
+        setTimeout(() => {
+          // Trigger window resize to fix Phaser canvas
+          window.dispatchEvent(new Event('resize'));
+
+          // Force canvas to correct size
+          const canvas = document.querySelector('#game-container canvas');
+          if (canvas) {
+            canvas.style.width = '';
+            canvas.style.height = '';
+          }
+        }, 100);
+      }
+    });
+  </script>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
