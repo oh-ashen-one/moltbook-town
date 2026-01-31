@@ -100,15 +100,25 @@ class MafiaClient {
 
   // Manually start a game (for testing)
   startGame() {
+    console.log("startGame called, connected:", this.connected, "socket:", !!this.socket);
+
     if (!this.socket || !this.connected) {
-      console.warn("Not connected to Mafia server");
+      console.warn("Not connected to Mafia server - attempting to connect first");
+      this.connect();
+      // Try again after connection
+      setTimeout(() => {
+        if (this.connected && this.socket) {
+          this.socket.send(JSON.stringify({ type: "start_game" }));
+          console.log("Sent start_game message (after reconnect)");
+        } else {
+          console.error("Still not connected after reconnect attempt");
+        }
+      }, 1500);
       return false;
     }
 
-    this.socket.send(JSON.stringify({
-      type: "start_game"
-    }));
-
+    this.socket.send(JSON.stringify({ type: "start_game" }));
+    console.log("Sent start_game message");
     return true;
   }
 

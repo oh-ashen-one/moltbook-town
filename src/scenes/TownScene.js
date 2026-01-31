@@ -1862,13 +1862,13 @@ export class TownScene extends Phaser.Scene {
 
     container.appendChild(msgEl);
 
-    // Remove old messages (keep max 20 for horizontal layout)
-    while (container.children.length > 20) {
+    // Remove old messages (keep max 50)
+    while (container.children.length > 50) {
       container.removeChild(container.firstChild);
     }
 
-    // Scroll to the right to show newest message
-    container.scrollLeft = container.scrollWidth;
+    // Scroll to bottom to show newest message
+    container.scrollTop = container.scrollHeight;
   }
 
   addSystemMessage(text) {
@@ -1881,8 +1881,8 @@ export class TownScene extends Phaser.Scene {
 
     container.appendChild(msgEl);
 
-    // Scroll to right
-    container.scrollLeft = container.scrollWidth;
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
   }
 
   handleAvatarResponse(data) {
@@ -1946,12 +1946,12 @@ export class TownScene extends Phaser.Scene {
 
     container.appendChild(msgEl);
 
-    while (container.children.length > 20) {
+    while (container.children.length > 50) {
       container.removeChild(container.firstChild);
     }
 
-    // Scroll to right
-    container.scrollLeft = container.scrollWidth;
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
   }
 
   showTypingIndicator() {

@@ -44,7 +44,7 @@ export class MafiaModal {
         <div class="mafia-header">
           <span class="mafia-title">MAFIA GAME</span>
           <span class="mafia-round" id="mafia-round">Waiting...</span>
-          <button class="mafia-close" onclick="window.mafiaModal.close()">&times;</button>
+          <button class="mafia-close">&times;</button>
         </div>
 
         <div class="mafia-phase" id="mafia-phase">
@@ -78,7 +78,7 @@ export class MafiaModal {
         </div>
 
         <div class="mafia-actions">
-          <button class="mafia-btn" id="mafia-start-btn" onclick="window.mafiaModal.startGame()">
+          <button class="mafia-btn" id="mafia-start-btn">
             Start Game (Debug)
           </button>
         </div>
@@ -87,6 +87,17 @@ export class MafiaModal {
 
     document.body.appendChild(modal);
     this.modal = modal;
+
+    // Add event listeners for buttons (instead of inline onclick)
+    const startBtn = document.getElementById('mafia-start-btn');
+    if (startBtn) {
+      startBtn.addEventListener('click', () => this.startGame());
+    }
+
+    const closeBtn = modal.querySelector('.mafia-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.close());
+    }
 
     // Close on backdrop click
     modal.addEventListener('click', (e) => {
@@ -326,7 +337,15 @@ export class MafiaModal {
 
   // Debug: manually start a game
   startGame() {
-    mafiaClient.startGame();
+    console.log("MafiaModal.startGame() called, client connected:", mafiaClient.isConnected());
+    const result = mafiaClient.startGame();
+    if (!result) {
+      // Show feedback in modal that we're connecting
+      const logEl = document.getElementById('discussion-log');
+      if (logEl) {
+        logEl.innerHTML = '<div class="discussion-entry system">Connecting to server...</div>';
+      }
+    }
   }
 
   // Update agents available for the game
