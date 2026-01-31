@@ -1,7 +1,7 @@
 import Webchat from '@blandsdk/client/webchat';
 
 // PartyKit connection configuration
-const PARTYKIT_HOST = import.meta.env.VITE_PARTYKIT_HOST || "localhost:1999";
+const PARTYKIT_HOST = import.meta.env.VITE_PARTYKIT_HOST || "moltbook-town.oh-ashen-one.partykit.dev";
 
 // Callable agents configuration
 export const CALLABLE_AGENTS = {
