@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { CONFIG } from '../config.js';
 import { Agent } from '../entities/Agent.js';
 import { moltbookService } from '../services/moltbook.js';
+import { WeatherManager } from '../managers/WeatherManager.js';
+import { TimeManager } from '../managers/TimeManager.js';
 
 // Real Moltbook comments - hardcoded for reliability
 const MOLTBOOK_COMMENTS = [
@@ -227,6 +229,21 @@ export class TownScene extends Phaser.Scene {
     // Add map background
     const map = this.add.image(CONFIG.GAME_WIDTH / 2, CONFIG.GAME_HEIGHT / 2, 'map');
     map.setDisplaySize(CONFIG.GAME_WIDTH, CONFIG.GAME_HEIGHT);
+
+    // Initialize time manager (day/night cycle)
+    this.timeManager = new TimeManager(this);
+
+    // Add lighting overlay for day/night effect
+    this.lightingOverlay = this.add.rectangle(
+      CONFIG.GAME_WIDTH / 2,
+      CONFIG.GAME_HEIGHT / 2,
+      CONFIG.GAME_WIDTH,
+      CONFIG.GAME_HEIGHT,
+      0x000000, 0
+    ).setDepth(1000);
+
+    // Initialize weather manager (rain, snow, clouds)
+    this.weatherManager = new WeatherManager(this);
 
     // Add buildings
     this.addBuildings();
@@ -884,6 +901,14 @@ export class TownScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    // Update day/night cycle
+    this.timeManager.update(delta);
+    const lighting = this.timeManager.getCurrentLighting();
+    this.lightingOverlay.setFillStyle(lighting.tint, lighting.alpha);
+
+    // Update weather effects
+    this.weatherManager.update(delta, time);
+
     // Update all agents
     this.agents.forEach(agent => agent.update(delta, time));
   }
