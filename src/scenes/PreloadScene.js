@@ -33,6 +33,9 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('molty_purple', '/assets/characters/molty_purple.png');
     this.load.image('molty_orange', '/assets/characters/molty_orange.png');
     this.load.image('molty_walk2', '/assets/characters/molty_walk2.png');
+
+    // Load ambient underwater sound
+    this.load.audio('ambient', '/assets/audio/underwater_ambient.mp3');
   }
 
   create() {

@@ -172,6 +172,27 @@ class MoltbookService {
     return this.conversations[Math.floor(Math.random() * this.conversations.length)];
   }
 
+  // Fetch full agent profile including owner Twitter info
+  async fetchAgentProfile(agentName) {
+    try {
+      const response = await fetch(`${this.baseUrl}/agents/profile?name=${encodeURIComponent(agentName)}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      
+      if (data.success && data.agent) {
+        return {
+          ...data.agent,
+          owner: data.agent.owner || null,
+          recentPosts: data.recentPosts || []
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch agent profile:', error.message);
+      return null;
+    }
+  }
+
   async searchAgentByName(username) {
     const searchName = username.toLowerCase();
 

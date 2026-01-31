@@ -172,10 +172,11 @@ export class Agent {
     this.showSpeech(actions[activity] || '...', 3000);
   }
 
-  showSpeech(text, duration = CONFIG.SPEECH_DURATION) {
+  showSpeech(text, duration = CONFIG.SPEECH_DURATION, postData = null) {
     this.hideSpeech();
 
     const displayText = text.length > 50 ? text.substring(0, 47) + '...' : text;
+    const isClickable = postData || this.data.recentPost;
     const bubbleWidth = Math.min(displayText.length * 5 + 30, 200);
     const bubbleHeight = 40;
     const bubbleX = this.sprite.x;
@@ -188,16 +189,18 @@ export class Agent {
     this.speechBubble.fillStyle(0x000000, 0.2);
     this.speechBubble.fillRoundedRect(bubbleX - bubbleWidth / 2 + 3, bubbleY - bubbleHeight / 2 + 3, bubbleWidth, bubbleHeight, 10);
 
-    // Background
-    this.speechBubble.fillStyle(0xffffff, 0.95);
+    // Background - slightly blue tint if clickable
+    const bgColor = isClickable ? 0xf0f8ff : 0xffffff;
+    this.speechBubble.fillStyle(bgColor, 0.95);
     this.speechBubble.fillRoundedRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
 
-    // Border
-    this.speechBubble.lineStyle(2, 0x333333, 1);
+    // Border - gold if clickable
+    const borderColor = isClickable ? 0xffd700 : 0x333333;
+    this.speechBubble.lineStyle(2, borderColor, 1);
     this.speechBubble.strokeRoundedRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
 
     // Tail
-    this.speechBubble.fillStyle(0xffffff, 0.95);
+    this.speechBubble.fillStyle(bgColor, 0.95);
     this.speechBubble.fillTriangle(bubbleX - 5, bubbleY + bubbleHeight / 2 - 5, bubbleX + 5, bubbleY + bubbleHeight / 2 - 5, bubbleX, bubbleY + bubbleHeight / 2 + 8);
 
     // Text
@@ -209,11 +212,46 @@ export class Agent {
       align: 'center',
     }).setOrigin(0.5);
 
+    // Make clickable hit area for the bubble
+    if (isClickable) {
+      this.speechHitArea = this.scene.add.rectangle(
+        bubbleX, bubbleY, bubbleWidth, bubbleHeight, 0x000000, 0
+      ).setInteractive({ useHandCursor: true });
+
+      this.speechHitArea.on('pointerdown', () => {
+        const post = postData || this.data.recentPost;
+        if (post && this.scene.showPostModal) {
+          this.scene.showPostModal(post, this.data.name);
+        }
+      });
+
+      this.speechHitArea.on('pointerover', () => {
+        this.speechBubble.clear();
+        // Redraw with hover effect
+        this.speechBubble.fillStyle(0x000000, 0.2);
+        this.speechBubble.fillRoundedRect(bubbleX - bubbleWidth / 2 + 3, bubbleY - bubbleHeight / 2 + 3, bubbleWidth, bubbleHeight, 10);
+        this.speechBubble.fillStyle(0xfffacd, 0.98);
+        this.speechBubble.fillRoundedRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
+        this.speechBubble.lineStyle(3, 0xffd700, 1);
+        this.speechBubble.strokeRoundedRect(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight / 2, bubbleWidth, bubbleHeight, 10);
+        this.speechBubble.fillStyle(0xfffacd, 0.98);
+        this.speechBubble.fillTriangle(bubbleX - 5, bubbleY + bubbleHeight / 2 - 5, bubbleX + 5, bubbleY + bubbleHeight / 2 - 5, bubbleX, bubbleY + bubbleHeight / 2 + 8);
+      });
+
+      // "Click to read" indicator
+      this.clickHint = this.scene.add.text(bubbleX, bubbleY + bubbleHeight / 2 - 8, '👆', {
+        fontSize: '10px',
+      }).setOrigin(0.5).setAlpha(0.7);
+    }
+
     // Fade in
     this.speechBubble.setAlpha(0);
     this.speechText.setAlpha(0);
+    if (this.speechHitArea) this.speechHitArea.setAlpha(0);
+    if (this.clickHint) this.clickHint.setAlpha(0);
+
     this.scene.tweens.add({
-      targets: [this.speechBubble, this.speechText],
+      targets: [this.speechBubble, this.speechText, this.speechHitArea, this.clickHint].filter(Boolean),
       alpha: 1,
       duration: 200,
     });
@@ -222,7 +260,7 @@ export class Agent {
     this.scene.time.delayedCall(duration - 300, () => {
       if (this.speechBubble && this.speechText) {
         this.scene.tweens.add({
-          targets: [this.speechBubble, this.speechText],
+          targets: [this.speechBubble, this.speechText, this.speechHitArea, this.clickHint].filter(Boolean),
           alpha: 0,
           duration: 300,
           onComplete: () => this.hideSpeech()
@@ -239,6 +277,14 @@ export class Agent {
     if (this.speechText) {
       this.speechText.destroy();
       this.speechText = null;
+    }
+    if (this.speechHitArea) {
+      this.speechHitArea.destroy();
+      this.speechHitArea = null;
+    }
+    if (this.clickHint) {
+      this.clickHint.destroy();
+      this.clickHint = null;
     }
   }
 

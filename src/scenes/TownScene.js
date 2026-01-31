@@ -23,6 +23,9 @@ export class TownScene extends Phaser.Scene {
     // Add buildings
     this.addBuildings();
 
+    // Setup ambient sound
+    this.setupAmbientSound();
+
     // Load agents from Moltbook
     this.loadAgents();
 
@@ -301,41 +304,74 @@ export class TownScene extends Phaser.Scene {
     }
   }
 
-  showAgentPanel(agentData, isInactive = false) {
+  async showAgentPanel(agentData, isInactive = false) {
     const panel = document.getElementById('agent-panel');
-    if (panel) {
-      const inactiveNotice = isInactive ? `
-        <div class="inactive-notice">
-          😴 This molty hasn't posted recently!<br>
-          <small>Try searching for an active molty in town</small>
-        </div>
-      ` : '';
+    if (!panel) return;
 
-      panel.innerHTML = `
-        <div class="agent-card ${isInactive ? 'inactive' : ''}">
-          <button class="close-btn" onclick="document.getElementById('agent-panel').style.display='none'; document.getElementById('molty-search').value=''; document.getElementById('search-result').textContent='';">✕</button>
-          <h3>${agentData.name}</h3>
-          ${inactiveNotice}
-          <div class="karma">⭐ ${agentData.karma} karma</div>
-          <p class="description">${agentData.description || 'A mysterious molty...'}</p>
-          ${agentData.recentPost ? `
-            <div class="recent-post">
-              <strong>Recent post:</strong>
-              <p>${agentData.recentPost.title}</p>
-            </div>
-          ` : ''}
-          <a href="https://moltbook.com/u/${agentData.name}" target="_blank" class="profile-link">
-            View Profile →
-          </a>
-          <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
-            📷 Take Screenshot
-          </button>
-          <button class="share-btn" onclick="window.townScene.shareToX()">
-            🐦 Share to X
-          </button>
+    const inactiveNotice = isInactive ? `
+      <div class="inactive-notice">
+        😴 This molty hasn't posted recently!<br>
+        <small>Try searching for an active molty in town</small>
+      </div>
+    ` : '';
+
+    // Show panel immediately with loading state for owner
+    panel.innerHTML = `
+      <div class="agent-card ${isInactive ? 'inactive' : ''}">
+        <button class="close-btn" onclick="document.getElementById('agent-panel').style.display='none'; document.getElementById('molty-search').value=''; document.getElementById('search-result').textContent='';">✕</button>
+        <h3>${agentData.name}</h3>
+        ${inactiveNotice}
+        <div class="karma">⭐ ${agentData.karma || 0} karma</div>
+        <p class="description">${agentData.description || 'A mysterious molty...'}</p>
+        <div id="owner-info" class="owner-info">
+          <span class="loading-owner">🔍 Finding owner...</span>
         </div>
-      `;
-      panel.style.display = 'block';
+        ${agentData.recentPost ? `
+          <div class="recent-post">
+            <strong>Recent post:</strong>
+            <p>${agentData.recentPost.title}</p>
+          </div>
+        ` : ''}
+        <a href="https://moltbook.com/u/${agentData.name}" target="_blank" class="profile-link">
+          View Profile →
+        </a>
+        <button class="screenshot-btn" onclick="window.townScene.copyScreenshot(this)">
+          📷 Take Screenshot
+        </button>
+        <button class="share-btn" onclick="window.townScene.shareToX()">
+          🐦 Share to X
+        </button>
+      </div>
+    `;
+    panel.style.display = 'block';
+
+    // Fetch owner Twitter info asynchronously
+    try {
+      const profile = await moltbookService.fetchAgentProfile(agentData.name);
+      const ownerEl = document.getElementById('owner-info');
+      
+      if (ownerEl && profile && profile.owner) {
+        const owner = profile.owner;
+        ownerEl.innerHTML = `
+          <div class="owner-card">
+            ${owner.x_avatar ? `<img src="${owner.x_avatar}" alt="${owner.x_name}" class="owner-avatar">` : ''}
+            <div class="owner-details">
+              <a href="https://x.com/${owner.x_handle}" target="_blank" class="owner-twitter">
+                <span class="twitter-icon">𝕏</span> @${owner.x_handle}
+              </a>
+              ${owner.x_follower_count ? `<span class="follower-count">${owner.x_follower_count.toLocaleString()} followers</span>` : ''}
+            </div>
+          </div>
+        `;
+      } else if (ownerEl) {
+        ownerEl.innerHTML = `<span class="no-owner">Owner info unavailable</span>`;
+      }
+    } catch (error) {
+      console.error('Failed to fetch owner:', error);
+      const ownerEl = document.getElementById('owner-info');
+      if (ownerEl) {
+        ownerEl.innerHTML = `<span class="no-owner">Owner info unavailable</span>`;
+      }
     }
   }
 
@@ -460,5 +496,97 @@ export class TownScene extends Phaser.Scene {
   update(time, delta) {
     // Update all agents
     this.agents.forEach(agent => agent.update(delta, time));
+  }
+
+  setupAmbientSound() {
+    // Create ambient sound (will be loaded in PreloadScene)
+    // Note: Add underwater_ambient.mp3 to /assets/audio/ folder
+    try {
+      if (this.cache.audio.exists('ambient')) {
+        this.ambientSound = this.sound.add('ambient', {
+          loop: true,
+          volume: 0.3
+        });
+        console.log('🔊 Ambient sound loaded');
+      } else {
+        console.log('ℹ️ No ambient audio file found - add underwater_ambient.mp3 to /assets/audio/');
+      }
+    } catch (e) {
+      console.log('ℹ️ Audio not available:', e.message);
+    }
+
+    // Setup sound controls in HTML
+    this.setupSoundControls();
+  }
+
+  setupSoundControls() {
+    const soundBtn = document.getElementById('sound-toggle');
+    const volumeSlider = document.getElementById('volume-slider');
+
+    if (soundBtn) {
+      soundBtn.addEventListener('click', () => {
+        if (this.ambientSound) {
+          if (this.ambientSound.isPlaying) {
+            this.ambientSound.pause();
+            soundBtn.textContent = '🔇';
+            soundBtn.title = 'Unmute';
+          } else {
+            this.ambientSound.play();
+            soundBtn.textContent = '🔊';
+            soundBtn.title = 'Mute';
+          }
+        } else {
+          // Try to start sound on first click (browser autoplay policy)
+          this.startAmbientSound();
+          soundBtn.textContent = '🔊';
+          soundBtn.title = 'Mute';
+        }
+      });
+    }
+
+    if (volumeSlider) {
+      volumeSlider.addEventListener('input', (e) => {
+        const volume = parseFloat(e.target.value);
+        if (this.ambientSound) {
+          this.ambientSound.setVolume(volume);
+        }
+      });
+    }
+  }
+
+  startAmbientSound() {
+    if (!this.ambientSound && this.sound.get('ambient')) {
+      this.ambientSound = this.sound.add('ambient', {
+        loop: true,
+        volume: 0.3
+      });
+    }
+    if (this.ambientSound && !this.ambientSound.isPlaying) {
+      this.ambientSound.play();
+    }
+  }
+
+  // Show a post in a modal when clicking speech bubble
+  showPostModal(post, agentName) {
+    const modal = document.getElementById('post-modal');
+    if (!modal) return;
+
+    modal.innerHTML = `
+      <div class="post-modal-content">
+        <button class="close-btn" onclick="document.getElementById('post-modal').style.display='none';">✕</button>
+        <div class="post-author">
+          <span class="author-name">🦞 ${agentName}</span>
+        </div>
+        <h3 class="post-title">${post.title || 'Untitled'}</h3>
+        <p class="post-content">${post.content || post.title || ''}</p>
+        <div class="post-stats">
+          <span>👍 ${post.upvotes || 0}</span>
+        </div>
+        <a href="https://moltbook.com/post/${post.id || ''}" target="_blank" class="view-post-link">
+          View on Moltbook →
+        </a>
+      </div>
+    `;
+    modal.style.display = 'flex';
   }
 }
