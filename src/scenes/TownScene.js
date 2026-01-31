@@ -1860,20 +1860,15 @@ export class TownScene extends Phaser.Scene {
       <span class="content">${this.escapeHtml(text)}</span>
     `;
 
-    // Check if user is near bottom before adding
-    const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-
     container.appendChild(msgEl);
 
-    // Remove old messages (keep max 30 for multiplayer)
-    while (container.children.length > 30) {
+    // Remove old messages (keep max 20 for horizontal layout)
+    while (container.children.length > 20) {
       container.removeChild(container.firstChild);
     }
 
-    if (isNearBottom) {
-      container.scrollTop = container.scrollHeight;
-    }
+    // Scroll to the right to show newest message
+    container.scrollLeft = container.scrollWidth;
   }
 
   addSystemMessage(text) {
@@ -1886,8 +1881,8 @@ export class TownScene extends Phaser.Scene {
 
     container.appendChild(msgEl);
 
-    // Auto-scroll
-    container.scrollTop = container.scrollHeight;
+    // Scroll to right
+    container.scrollLeft = container.scrollWidth;
   }
 
   handleAvatarResponse(data) {
@@ -1949,18 +1944,14 @@ export class TownScene extends Phaser.Scene {
       <span class="content">${this.escapeHtml(text)}</span>
     `;
 
-    const isNearBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-
     container.appendChild(msgEl);
 
-    while (container.children.length > 30) {
+    while (container.children.length > 20) {
       container.removeChild(container.firstChild);
     }
 
-    if (isNearBottom) {
-      container.scrollTop = container.scrollHeight;
-    }
+    // Scroll to right
+    container.scrollLeft = container.scrollWidth;
   }
 
   showTypingIndicator() {

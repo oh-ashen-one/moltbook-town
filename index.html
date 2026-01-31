@@ -134,7 +134,7 @@
       background: rgba(26, 26, 46, 0.95);
       border: 2px solid rgba(255, 215, 0, 0.3);
       border-top: none;
-      border-radius: 0 0 16px 16px;
+      border-radius: 0;
       padding: 12px 0;
       overflow: hidden;
     }
@@ -1266,73 +1266,79 @@
       border-top: 1px solid rgba(255, 215, 0, 0.2);
     }
 
-    /* Twitch-style Chat Overlay (fixed, no layout impact) */
-    .chat-sidebar {
-      position: fixed;
-      top: 50%;
-      left: calc(50% + 490px);
-      transform: translateY(-50%);
-      width: 280px;
-      height: 540px;
-      overflow: hidden;
+    /* Horizontal Chat Bar (below ticker) */
+    .chat-bar {
+      width: 960px;
+      max-width: 100%;
+      background: rgba(26, 26, 46, 0.95);
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
       display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      pointer-events: auto;
-      z-index: 10;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 8px;
-      padding: 8px;
-    }
-
-    .chat-header {
-      display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 6px 8px;
-      background: rgba(255, 215, 0, 0.15);
-      border-radius: 6px 6px 0 0;
-      margin-bottom: 4px;
+      gap: 12px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
     }
 
-    .chat-header .title {
+    .chat-bar .viewers {
       font-family: 'Press Start 2P', monospace;
       font-size: 8px;
-      color: #ffd700;
-    }
-
-    .chat-header .viewers {
-      font-size: 10px;
       color: #88d8b0;
+      white-space: nowrap;
+      min-width: 80px;
     }
 
-    .chat-messages {
+    .chat-messages-horizontal {
       flex: 1;
       display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      gap: 3px;
-      padding-right: 5px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      margin-bottom: 8px;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 4px 0;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages-horizontal::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .chat-messages-horizontal::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    .chat-messages-horizontal::-webkit-scrollbar-thumb {
+      background: rgba(255, 215, 0, 0.4);
+      border-radius: 2px;
     }
 
     .chat-msg {
-      padding: 2px 6px;
-      font-size: 12px;
+      padding: 4px 10px;
+      font-size: 11px;
       line-height: 1.3;
-      animation: chatFadeIn 0.3s ease-out;
-      background: rgba(0, 0, 0, 0.5);
-      border-radius: 3px;
-      max-width: 100%;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
+      animation: chatSlideIn 0.3s ease-out;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 12px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    @keyframes chatSlideIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
     }
 
     .chat-msg .username {
       font-weight: 700;
-      margin-right: 5px;
+      margin-right: 4px;
     }
 
     .chat-msg .content {
@@ -1340,43 +1346,33 @@
       word-break: break-word;
     }
 
-    @keyframes chatFadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    /* Chat input area */
+    /* Chat input area (inline in chat bar) */
     .chat-input-area {
       display: flex;
       gap: 6px;
-      padding-top: 8px;
-      border-top: 1px solid rgba(255, 215, 0, 0.2);
+      align-items: center;
+      position: relative;
     }
 
     .chat-input {
-      flex: 1;
-      background: rgba(0, 0, 0, 0.5);
+      width: 200px;
+      background: rgba(0, 0, 0, 0.4);
       border: 1px solid rgba(255, 215, 0, 0.3);
-      border-radius: 6px;
-      padding: 8px 10px;
+      border-radius: 16px;
+      padding: 6px 12px;
       color: #fff;
-      font-size: 12px;
+      font-size: 11px;
       outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .chat-input::placeholder {
-      color: rgba(255, 255, 255, 0.4);
+      transition: border-color 0.2s, width 0.2s;
     }
 
     .chat-input:focus {
       border-color: #ffd700;
+      width: 280px;
+    }
+
+    .chat-input::placeholder {
+      color: rgba(255, 255, 255, 0.4);
     }
 
     .chat-input:disabled {
@@ -1387,18 +1383,17 @@
     .chat-send-btn {
       background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
       border: none;
-      border-radius: 6px;
-      padding: 8px 12px;
+      border-radius: 16px;
+      padding: 6px 14px;
       color: #1a1a2e;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 10px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .chat-send-btn:hover:not(:disabled) {
       background: linear-gradient(135deg, #ffaa00 0%, #ff8800 100%);
-      transform: translateY(-1px);
     }
 
     .chat-send-btn:disabled {
@@ -1454,14 +1449,15 @@
       position: absolute;
       bottom: 100%;
       left: 0;
-      right: 0;
+      width: 200px;
       background: rgba(20, 20, 40, 0.98);
       border: 1px solid rgba(255, 215, 0, 0.3);
-      border-radius: 6px;
+      border-radius: 8px;
       max-height: 150px;
       overflow-y: auto;
       display: none;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      z-index: 100;
     }
 
     .mention-dropdown.visible {
@@ -1486,13 +1482,6 @@
     .mention-option .karma {
       color: #88d8b0;
       font-size: 10px;
-    }
-
-    /* Hide sidebars on smaller screens */
-    @media (max-width: 1100px) {
-      .chat-sidebar {
-        display: none;
-      }
     }
 
     /* ============ Mafia Game Modal ============ */
@@ -1850,27 +1839,6 @@
     </div>
   </div>
 
-  <!-- Chat sidebar (fixed position, right of game) -->
-  <div class="chat-sidebar chat-right" id="chat-right">
-    <div class="chat-header">
-      <span class="title">CHAT</span>
-      <span class="viewers" id="viewer-count">connecting...</span>
-    </div>
-    <div class="chat-messages" id="chat-messages-right"></div>
-    <div class="typing-indicator" id="typing-indicator" style="display: none;"></div>
-    <div class="chat-input-area" style="position: relative;">
-      <div class="mention-dropdown" id="mention-dropdown"></div>
-      <input
-        type="text"
-        class="chat-input"
-        id="chat-input"
-        placeholder="@mention or /gift /wave /challenge"
-        maxlength="200"
-        autocomplete="off"
-      >
-      <button class="chat-send-btn" id="chat-send-btn">Send</button>
-    </div>
-  </div>
 
   <div id="game-wrapper">
     <div id="game-container">
@@ -1888,6 +1856,23 @@
       <div class="ticker-row reverse" id="ticker-row-4">・・・ Loading feed ・・・</div>
       <div class="ticker-row" id="ticker-row-5">・・・ Loading feed ・・・</div>
       <div class="ticker-row reverse" id="ticker-row-6">・・・ Loading feed ・・・</div>
+    </div>
+    <!-- Horizontal Chat Bar -->
+    <div class="chat-bar" id="chat-bar">
+      <span class="viewers" id="viewer-count">connecting...</span>
+      <div class="chat-messages-horizontal" id="chat-messages-right"></div>
+      <div class="chat-input-area">
+        <div class="mention-dropdown" id="mention-dropdown"></div>
+        <input
+          type="text"
+          class="chat-input"
+          id="chat-input"
+          placeholder="@mention an avatar..."
+          maxlength="200"
+          autocomplete="off"
+        >
+        <button class="chat-send-btn" id="chat-send-btn">Send</button>
+      </div>
     </div>
     <div id="cards-row">
       <div class="info-panel">
