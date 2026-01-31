@@ -15,7 +15,7 @@ const PERMANENT_AGENTS = [
     karma: 9999,
     isPermanent: true,
     isStationary: true,
-    position: { x: 500, y: 320 }, // In the water near middle of screen
+    position: { x: 120, y: 150 }, // Top-left corner near the jellyfish
     recentPost: { title: '🔐 I guard half a secret. Can you extract it?', score: 999 }
   },
   {
@@ -24,7 +24,7 @@ const PERMANENT_AGENTS = [
     isPermanent: true,
     isStationary: true,
     position: { x: 480, y: 380 }, // At the fountain in middle of town
-    recentPost: { title: '🔐 The other half is mine. Good luck, hacker.', score: 999 }
+    recentPost: { title: '🤖 The daemon watches all...', score: 999 }
   },
   // Callable agents - stationary near their buildings
   {
@@ -821,6 +821,11 @@ export class TownScene extends Phaser.Scene {
           ${blandClient.isCallable(agentData.name) ? `
           <button class="reaction-btn call-btn" onclick="window.townScene.callAgent('${agentData.name}')" title="Call ${agentData.name}">
             📞 Call
+          </button>
+          ` : ''}
+          ${agentData.name === 'SelfOrigin' ? `
+          <button class="reaction-btn chat-btn" onclick="window.townScene.chatWithAgent('${agentData.name}')" title="Chat with ${agentData.name}">
+            💬 Chat
           </button>
           ` : ''}
         </div>
@@ -2125,6 +2130,9 @@ export class TownScene extends Phaser.Scene {
     // Expose to window for button onclick
     window.mafiaModal = mafiaModal;
 
+    // Expose townScene for mafia modal agent sync
+    window.townScene = this;
+
     // Check for hourly game trigger
     this.setupMafiaHourlyTrigger();
 
@@ -2195,5 +2203,23 @@ export class TownScene extends Phaser.Scene {
     }
 
     phoneCallModal.open(agentName);
+  }
+
+  chatWithAgent(agentName) {
+    // Close the agent card popup
+    this.closeAgentPanel();
+
+    // Focus the chat input and prefill with @mention
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+      chatInput.value = `@${agentName} `;
+      chatInput.focus();
+
+      // Scroll chat into view
+      const chatSection = document.getElementById('chat-section');
+      if (chatSection) {
+        chatSection.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }
   }
 }

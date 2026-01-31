@@ -30,86 +30,100 @@ export class MafiaModal {
   }
 
   createModalHTML() {
-    // Check if modal already exists
-    if (document.getElementById('mafia-modal')) {
-      this.modal = document.getElementById('mafia-modal');
-    } else {
-      const modal = document.createElement('div');
-      modal.id = 'mafia-modal';
-      modal.className = 'mafia-modal';
-      modal.innerHTML = `
-        <div class="mafia-modal-content">
-          <div class="mafia-header">
-            <span class="mafia-title">MAFIA GAME</span>
-            <span class="mafia-round" id="mafia-round">Waiting...</span>
-            <button class="mafia-close">&times;</button>
-          </div>
+    // Remove any existing modal to ensure clean state (fixes HMR issues)
+    const existingModal = document.getElementById('mafia-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
 
-          <div class="mafia-phase" id="mafia-phase">
-            <span class="phase-icon"></span>
-            <span class="phase-text">Waiting for next game...</span>
-            <span class="phase-timer" id="mafia-timer"></span>
-          </div>
+    const modal = document.createElement('div');
+    modal.id = 'mafia-modal';
+    modal.className = 'mafia-modal';
+    modal.innerHTML = `
+      <div class="mafia-modal-content">
+        <div class="mafia-header">
+          <span class="mafia-title">MAFIA GAME</span>
+          <span class="mafia-round" id="mafia-round">Waiting...</span>
+          <button class="mafia-close">&times;</button>
+        </div>
 
-          <div class="mafia-players">
-            <div class="players-alive" id="players-alive">
-              <div class="players-label">ALIVE</div>
-              <div class="players-list" id="alive-list"></div>
-            </div>
-            <div class="players-eliminated" id="players-eliminated">
-              <div class="players-label">ELIMINATED</div>
-              <div class="players-list" id="eliminated-list"></div>
-            </div>
-          </div>
+        <div class="mafia-phase" id="mafia-phase">
+          <span class="phase-icon"></span>
+          <span class="phase-text">Waiting for next game...</span>
+          <span class="phase-timer" id="mafia-timer"></span>
+        </div>
 
-          <div class="mafia-discussion" id="mafia-discussion">
-            <div class="discussion-log" id="discussion-log"></div>
+        <div class="mafia-players">
+          <div class="players-alive" id="players-alive">
+            <div class="players-label">ALIVE</div>
+            <div class="players-list" id="alive-list"></div>
           </div>
-
-          <div class="mafia-votes" id="mafia-votes">
-            <div class="votes-label">VOTES</div>
-            <div class="votes-bars" id="votes-bars"></div>
-          </div>
-
-          <div class="mafia-winner" id="mafia-winner" style="display: none;">
-            <div class="winner-text"></div>
-          </div>
-
-          <div class="mafia-actions">
-            <button class="mafia-btn" id="mafia-start-btn">
-              Start Game (Debug)
-            </button>
+          <div class="players-eliminated" id="players-eliminated">
+            <div class="players-label">ELIMINATED</div>
+            <div class="players-list" id="eliminated-list"></div>
           </div>
         </div>
-      `;
 
-      document.body.appendChild(modal);
-      this.modal = modal;
-    }
+        <div class="mafia-discussion" id="mafia-discussion">
+          <div class="discussion-log" id="discussion-log"></div>
+        </div>
 
-    // Always attach event listeners (use onclick to replace any existing)
-    const startBtn = document.getElementById('mafia-start-btn');
-    if (startBtn) {
-      startBtn.onclick = () => this.startGame();
-    }
+        <div class="mafia-votes" id="mafia-votes">
+          <div class="votes-label">VOTES</div>
+          <div class="votes-bars" id="votes-bars"></div>
+        </div>
 
-    const closeBtn = this.modal.querySelector('.mafia-close');
-    if (closeBtn) {
-      closeBtn.onclick = () => this.close();
-    }
+        <div class="mafia-winner" id="mafia-winner" style="display: none;">
+          <div class="winner-text"></div>
+        </div>
 
-    // Close on backdrop click
-    this.modal.onclick = (e) => {
-      if (e.target === this.modal) {
+        <div class="mafia-actions">
+          <button class="mafia-btn" id="mafia-start-btn">
+            Start Game (Debug)
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.modal = modal;
+
+    // Use event delegation for reliable click handling
+    this.modal.addEventListener('click', (e) => {
+      const target = e.target;
+
+      // Handle start button click
+      if (target.id === 'mafia-start-btn' || target.closest('#mafia-start-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Mafia start button clicked!');
+        this.startGame();
+        return;
+      }
+
+      // Handle close button click
+      if (target.classList.contains('mafia-close') || target.closest('.mafia-close')) {
+        this.close();
+        return;
+      }
+
+      // Handle backdrop click (only if clicking the modal backdrop itself)
+      if (target === this.modal) {
         this.close();
       }
-    };
+    });
   }
 
   open() {
     if (this.modal) {
       this.modal.classList.add('open');
       this.isOpen = true;
+
+      // Sync agents from TownScene before requesting state
+      if (window.townScene?.agents?.length > 0) {
+        mafiaClient.updateAgents(window.townScene.agents);
+      }
+
       mafiaClient.requestState();
     }
   }

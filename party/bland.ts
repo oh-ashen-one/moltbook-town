@@ -1,5 +1,8 @@
 import type * as Party from "partykit/server";
 
+// 1 hour cooldown between calls per IP - persisted in storage
+const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+
 export default class BlandServer implements Party.Server {
   constructor(readonly room: Party.Room) {}
 
@@ -20,6 +23,29 @@ export default class BlandServer implements Party.Server {
       try {
         const body = await req.json() as { agentName: string };
         const { agentName } = body;
+
+        // Get client IP for rate limiting
+        const clientIP = req.headers.get("cf-connecting-ip") ||
+                         req.headers.get("x-forwarded-for")?.split(",")[0] ||
+                         req.headers.get("x-real-ip") ||
+                         "unknown";
+
+        // Check cooldown from persistent storage (survives refreshes/restarts)
+        const storageKey = `call_cooldown_${clientIP}`;
+        const lastCall = await this.room.storage.get<number>(storageKey);
+        const now = Date.now();
+        if (lastCall && (now - lastCall) < COOLDOWN_MS) {
+          const remainingMs = COOLDOWN_MS - (now - lastCall);
+          const remainingMins = Math.ceil(remainingMs / 60000);
+          return new Response(
+            JSON.stringify({
+              error: "cooldown",
+              message: `You can only call once per hour. Try again in ${remainingMins} minutes.`,
+              remainingMs
+            }),
+            { status: 429, headers }
+          );
+        }
 
         // Look up the Bland agent ID (must use this.room.env in PartyKit workers)
         const agentIds: Record<string, string> = {
@@ -68,7 +94,10 @@ export default class BlandServer implements Party.Server {
         }
 
         const session = await response.json();
-        console.log(`Bland session created for ${agentName}`);
+        console.log(`Bland session created for ${agentName} from IP ${clientIP}`);
+
+        // Record this IP's call time for cooldown (persistent storage)
+        await this.room.storage.put(storageKey, Date.now());
 
         return new Response(JSON.stringify({
           token: session.token,

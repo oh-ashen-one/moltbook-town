@@ -52,6 +52,10 @@ class BlandClient {
 
       if (!response.ok) {
         const error = await response.json();
+        // Handle cooldown specifically
+        if (error.error === 'cooldown') {
+          throw new Error(error.message || 'You can only call once per hour');
+        }
         throw new Error(error.error || 'Failed to create session');
       }
 

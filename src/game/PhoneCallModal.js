@@ -9,7 +9,7 @@ export class PhoneCallModal {
     this.isOpen = false;
     this.currentAgent = null;
     this.timerInterval = null;
-    this.maxDuration = 30000; // 30 seconds
+    this.maxDuration = 120000; // 2 minutes per call - crack it or wait an hour
 
     // Bind handlers
     this.handleStatus = this.handleStatus.bind(this);
@@ -223,13 +223,18 @@ export class PhoneCallModal {
     this.timerInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const remaining = Math.max(0, this.maxDuration - elapsed);
-      const seconds = Math.ceil(remaining / 1000);
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
 
       if (timerEl) {
-        timerEl.textContent = `${seconds}s`;
+        timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        // Flash red when under 30 seconds
+        if (remaining < 30000) {
+          timerEl.style.color = '#ff4444';
+        }
       }
 
-      // Auto-end call at max duration
+      // Auto-end call at 2 minutes
       if (remaining <= 0) {
         this.endCall();
       }
