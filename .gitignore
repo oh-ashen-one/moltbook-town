@@ -6,3 +6,4 @@ dist
 .env.*
 !.env.example
 .partykit
+CLAUDE.md
