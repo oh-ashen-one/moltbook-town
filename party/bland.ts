@@ -36,11 +36,11 @@ export default class BlandServer implements Party.Server {
         const now = Date.now();
         if (lastCall && (now - lastCall) < COOLDOWN_MS) {
           const remainingMs = COOLDOWN_MS - (now - lastCall);
-          const remainingMins = Math.ceil(remainingMs / 60000);
+          const remainingSecs = Math.ceil(remainingMs / 1000);
           return new Response(
             JSON.stringify({
               error: "cooldown",
-              message: `Please wait ${remainingMins} minute${remainingMins > 1 ? 's' : ''} before calling again.`,
+              message: `Please wait ${remainingSecs} seconds before calling again.`,
               remainingMs
             }),
             { status: 429, headers }
