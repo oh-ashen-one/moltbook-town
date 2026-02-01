@@ -14,11 +14,12 @@ class MoltbookService {
     this.conversationCacheDuration = 10 * 60 * 1000; // 10 minutes
   }
 
-  // Extract unique agents from posts, calculate karma from upvotes
+  // Extract unique agents from posts AND comments, calculate karma from upvotes
   extractAgentsFromPosts(posts) {
     const agentMap = new Map();
 
     for (const post of posts) {
+      // Process post author
       if (post.author && post.author.id) {
         const existing = agentMap.get(post.author.id);
         const postUpvotes = post.upvotes || 0;
@@ -35,18 +36,40 @@ class MoltbookService {
             };
           }
         } else {
+          const submoltName = post.submolt?.display_name || post.submolt?.name || 'general';
+          const postTitle = post.title || 'Untitled';
           agentMap.set(post.author.id, {
             id: post.author.id,
             name: post.author.name || null,
             karma: postUpvotes,
             avatar: post.author.avatar || post.author.profile_image || post.author.profileImage || post.author.image || null,
-            description: `Active in ${post.submolt?.display_name || post.submolt?.name || 'general'}`,
+            description: `Active in ${submoltName}`,
+            activity: `Posting: "${postTitle.substring(0, 40)}${postTitle.length > 40 ? '...' : ''}"`,
             recentPost: {
               id: post.id,
-              title: post.title || 'Untitled',
+              title: postTitle,
               upvotes: postUpvotes
             }
           });
+        }
+      }
+
+      // Process comment authors (from _comments attached during fetch)
+      if (post._comments && Array.isArray(post._comments)) {
+        for (const comment of post._comments) {
+          if (comment.author && comment.author.id && !agentMap.has(comment.author.id)) {
+            const commentUpvotes = comment.upvotes || 0;
+            const commentContent = comment.content || comment.body || '';
+            agentMap.set(comment.author.id, {
+              id: comment.author.id,
+              name: comment.author.name || comment.author.username || null,
+              karma: commentUpvotes,
+              avatar: comment.author.avatar || comment.author.profile_image || comment.author.profileImage || null,
+              description: 'Active commenter',
+              activity: `Commenting: "${commentContent.substring(0, 40)}${commentContent.length > 40 ? '...' : ''}"`,
+              recentPost: null
+            });
+          }
         }
       }
     }
@@ -65,22 +88,69 @@ class MoltbookService {
     return this.agents.slice(0, limit);
   }
 
-  async fetchFeed(sort = 'new', limit = 20) {
+  async fetchFeed(sort = 'new', limit = 20, fetchComments = false) {
     const now = Date.now();
 
-    if (this.posts.length > 0 && (now - this.lastFeedFetch) < this.feedCacheDuration) {
+    // Skip cache for large requests (3D view)
+    if (limit <= 100 && this.posts.length > 0 && (now - this.lastFeedFetch) < this.feedCacheDuration) {
       return { agents: this.agents, posts: this.posts };
     }
 
     try {
-      // Public API - no auth needed
-      const response = await fetch(`${this.baseUrl}/posts?limit=${limit}`);
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-      const data = await response.json();
+      // Fetch multiple pages of posts using pagination
+      let rawPosts = [];
+      let offset = 0;
+      const postsPerPage = 50; // API max per request
+      const maxPages = 10; // Try up to 10 pages (500 posts)
 
-      const rawPosts = data.posts || data;
-      if (!Array.isArray(rawPosts) || rawPosts.length === 0) {
+      for (let page = 0; page < maxPages; page++) {
+        try {
+          const response = await fetch(`${this.baseUrl}/posts?limit=${postsPerPage}&offset=${offset}`);
+          if (!response.ok) {
+            console.log(`Page ${page + 1} failed with status ${response.status}, stopping`);
+            break;
+          }
+          const data = await response.json();
+          const posts = data.posts || data;
+          if (!Array.isArray(posts) || posts.length === 0) {
+            console.log(`Page ${page + 1} returned no posts, stopping`);
+            break;
+          }
+          rawPosts.push(...posts);
+          console.log(`Fetched page ${page + 1}: ${posts.length} posts (total: ${rawPosts.length})`);
+          if (posts.length < postsPerPage) {
+            console.log(`Got fewer posts than requested, no more pages`);
+            break;
+          }
+          offset += postsPerPage;
+        } catch (e) {
+          console.log(`Page ${page + 1} error: ${e.message}, stopping`);
+          break;
+        }
+      }
+
+      console.log(`Total posts fetched: ${rawPosts.length}`);
+
+      if (rawPosts.length === 0) {
         throw new Error('No posts in response');
+      }
+
+      // Fetch comments for ALL posts to get more unique agents
+      if (fetchComments) {
+        const postsToFetchComments = rawPosts; // Check ALL posts
+        await Promise.all(postsToFetchComments.map(async (post) => {
+          try {
+            const postId = post.id || post._id;
+            if (!postId) return;
+            const commentsRes = await fetch(`${this.baseUrl}/posts/${postId}/comments`);
+            if (commentsRes.ok) {
+              const commentsData = await commentsRes.json();
+              post._comments = Array.isArray(commentsData) ? commentsData : (commentsData.comments || []);
+            }
+          } catch (e) {
+            // Ignore comment fetch errors
+          }
+        }));
       }
 
       this.posts = rawPosts.map((post, i) => ({
@@ -114,28 +184,43 @@ class MoltbookService {
     return { title: post.title, author: post.author };
   }
 
-  async fetchActiveConversations() {
+  async fetchActiveConversations(loadedAgentNames = []) {
     const now = Date.now();
+    const agentNameSet = new Set(loadedAgentNames);
 
-    if (this.conversations.length > 0 && (now - this.lastConversationFetch) < this.conversationCacheDuration) {
+    // Skip cache if we have specific agents to check
+    if (loadedAgentNames.length === 0 && this.conversations.length > 0 &&
+        (now - this.lastConversationFetch) < this.conversationCacheDuration) {
       return this.conversations;
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/posts?limit=10`);
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
-      const data = await response.json();
-      const posts = data.posts || data;
+      // Use cached posts if available, otherwise fetch
+      let posts = this.posts;
+      if (posts.length === 0) {
+        const response = await fetch(`${this.baseUrl}/posts?limit=50`);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        const data = await response.json();
+        posts = data.posts || data;
+      }
 
       if (!Array.isArray(posts) || posts.length === 0) {
         throw new Error('No posts for conversations');
       }
 
+      // Filter to posts where author is a loaded agent
+      const relevantPosts = loadedAgentNames.length > 0
+        ? posts.filter(p => p.author?.name && agentNameSet.has(p.author.name))
+        : posts;
+
+      console.log(`Checking ${relevantPosts.length} posts for conversations among ${loadedAgentNames.length} agents`);
+
       this.conversations = [];
 
-      for (let i = 0; i < Math.min(3, posts.length); i++) {
-        const post = posts[i];
-        if (i > 0) await new Promise(r => setTimeout(r, 500));
+      // Check up to 20 posts for interactions
+      for (let i = 0; i < Math.min(20, relevantPosts.length); i++) {
+        const post = relevantPosts[i];
+        if (i > 0 && i % 5 === 0) await new Promise(r => setTimeout(r, 200));
 
         try {
           const postId = post.id || post._id;
@@ -145,16 +230,17 @@ class MoltbookService {
             const comments = commentsData.comments || commentsData;
 
             if (comments && comments.length >= 1) {
-              const agentIds = [...new Set([
-                post.author?.id || post.author?._id,
-                ...comments.map(c => c.author?.id || c.author?._id)
-              ])].filter(Boolean).slice(0, 4);
+              // Use agent NAMES instead of IDs
+              const participantNames = [...new Set([
+                post.author?.name,
+                ...comments.map(c => c.author?.name)
+              ])].filter(name => name && (loadedAgentNames.length === 0 || agentNameSet.has(name)));
 
-              if (agentIds.length >= 2) {
+              if (participantNames.length >= 2) {
                 this.conversations.push({
                   id: `conv-${postId}`,
                   postId,
-                  agentIds,
+                  agentNames: participantNames, // Use names not IDs
                   topic: (post.title || 'Discussion').substring(0, 35)
                 });
               }
@@ -164,6 +250,8 @@ class MoltbookService {
           // Skip failed comment fetch
         }
       }
+
+      console.log(`Found ${this.conversations.length} conversations with loaded agents`);
 
       if (this.conversations.length === 0) {
         throw new Error('No conversations found');
@@ -255,6 +343,199 @@ class MoltbookService {
 
   getRecentPosters(limit = 10) {
     return this.agents.slice(0, limit).map(a => a.name);
+  }
+
+  // Build relationship graph from conversations
+  // Returns edges: [{ source, target, weight, topics }]
+  buildRelationshipGraph(agents, conversations) {
+    const edgeMap = new Map(); // "source|target" -> edge
+    const loadedAgentNames = new Set(agents.map(a => a.name));
+
+    for (const conv of conversations) {
+      // Use agentNames if available, fallback to agentIds for backwards compat
+      let names = conv.agentNames || [];
+
+      // If using old format with agentIds, try to map them
+      if (names.length === 0 && conv.agentIds) {
+        const idToName = new Map();
+        agents.forEach(a => idToName.set(a.id, a.name));
+        names = conv.agentIds
+          .map(id => idToName.get(id))
+          .filter(Boolean);
+      }
+
+      // Filter to only loaded agents
+      names = names.filter(name => loadedAgentNames.has(name));
+
+      if (names.length < 2) continue;
+
+      // Create edges between all participants (fully connected)
+      for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+          // Normalize edge key (alphabetical order)
+          const [a, b] = [names[i], names[j]].sort();
+          const key = `${a}|${b}`;
+
+          if (edgeMap.has(key)) {
+            const edge = edgeMap.get(key);
+            edge.weight++;
+            if (!edge.topics.includes(conv.topic)) {
+              edge.topics.push(conv.topic);
+            }
+          } else {
+            edgeMap.set(key, {
+              source: a,
+              target: b,
+              weight: 1,
+              topics: [conv.topic]
+            });
+          }
+        }
+      }
+    }
+
+    return Array.from(edgeMap.values());
+  }
+
+  // Fetch ALL recent activity from Moltbook (not filtered by loaded agents)
+  // Returns: [{ commenter, postAuthor, postTitle, postId, content, timestamp, type }]
+  async fetchAllRecentActivity(sinceTimestamp = null, limit = 100) {
+    const recentActivity = [];
+
+    try {
+      // Fetch recent posts (ALL posts, sorted by newest first, with cache-bust)
+      const response = await fetch(`${this.baseUrl}/posts?limit=100&sort=new&_t=${Date.now()}`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      const posts = data.posts || data;
+
+      // Add posts as activity
+      for (const post of posts) {
+        if (!post.author?.name) continue;
+
+        const timestamp = post.created_at || post.createdAt || null;
+
+        // Skip if older than sinceTimestamp
+        if (sinceTimestamp && timestamp) {
+          const postTime = new Date(timestamp).getTime();
+          if (postTime <= sinceTimestamp) continue;
+        }
+
+        recentActivity.push({
+          commenter: post.author.name,
+          postAuthor: post.author.name,
+          postTitle: post.title || 'Untitled',
+          postId: post.id || post._id,
+          content: post.title || post.content?.substring(0, 100) || '',
+          timestamp: timestamp || new Date().toISOString(),
+          type: 'post'
+        });
+      }
+
+      // Note: Comments endpoint returns 405, so we only show posts for now
+
+      // Sort by timestamp (newest first)
+      recentActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      // Dedupe by unique key
+      const seen = new Set();
+      const deduped = recentActivity.filter(a => {
+        const key = `${a.postId}-${a.commenter}-${a.type}-${a.content.substring(0, 20)}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      return deduped.slice(0, limit);
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error);
+      return [];
+    }
+  }
+
+  // Fetch recent activity for live feed (filtered to loaded agents)
+  // Returns: [{ commenter, postAuthor, postTitle, postId, content, timestamp, type }]
+  async fetchRecentComments(loadedAgentNames = [], limit = 10) {
+    const agentNameSet = new Set(loadedAgentNames);
+    const recentActivity = [];
+
+    try {
+      // Fetch recent posts
+      const response = await fetch(`${this.baseUrl}/posts?limit=30`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      const posts = data.posts || data;
+
+      // First, add posts by loaded agents as activity
+      for (const post of posts) {
+        if (post.author?.name && agentNameSet.has(post.author.name)) {
+          recentActivity.push({
+            commenter: post.author.name,
+            postAuthor: post.author.name,
+            postTitle: post.title || 'Untitled',
+            postId: post.id || post._id,
+            content: post.title || post.content?.substring(0, 100) || '',
+            timestamp: post.created_at || post.createdAt || new Date().toISOString(),
+            type: 'post'
+          });
+        }
+        if (recentActivity.length >= limit) break;
+      }
+
+      // Then check for comments (where commenter OR post author is loaded)
+      const postsToCheck = posts.slice(0, 10);
+      for (const post of postsToCheck) {
+        try {
+          const postId = post.id || post._id;
+          const commentsRes = await fetch(`${this.baseUrl}/posts/${postId}/comments`);
+          if (!commentsRes.ok) continue;
+
+          const commentsData = await commentsRes.json();
+          const comments = commentsData.comments || commentsData;
+
+          if (Array.isArray(comments)) {
+            for (const c of comments) {
+              const commenterIsLoaded = c.author?.name && agentNameSet.has(c.author.name);
+              const authorIsLoaded = post.author?.name && agentNameSet.has(post.author.name);
+
+              // Include if either participant is a loaded agent
+              if (commenterIsLoaded || authorIsLoaded) {
+                recentActivity.push({
+                  commenter: c.author?.name || 'Someone',
+                  postAuthor: post.author?.name || 'Someone',
+                  postTitle: post.title || 'Untitled',
+                  postId: postId,
+                  content: (c.content || '').substring(0, 100),
+                  timestamp: c.created_at || c.createdAt || new Date().toISOString(),
+                  type: 'comment'
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // Skip failed fetch
+        }
+
+        if (recentActivity.length >= limit * 2) break;
+      }
+
+      // Sort by timestamp (newest first) and dedupe
+      recentActivity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      // Dedupe by postId + commenter
+      const seen = new Set();
+      const deduped = recentActivity.filter(a => {
+        const key = `${a.postId}-${a.commenter}-${a.type}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      return deduped.slice(0, limit);
+    } catch (error) {
+      console.error('Failed to fetch recent comments:', error);
+      return [];
+    }
   }
 
   // Fetch random comments for the chat sidebars

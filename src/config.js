@@ -34,6 +34,7 @@ export const CONFIG = {
   // API settings (public endpoint - no auth needed)
   MOLTBOOK_API: 'https://www.moltbook.com/api/v1',
   REFRESH_INTERVAL: 30000, // 30 seconds between API refreshes
+  ACTIVITY_POLL_INTERVAL: 5000, // 5 seconds for live activity feed
   
   // Colors for agents (cycle through these)
   AGENT_COLORS: [
