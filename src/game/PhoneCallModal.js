@@ -9,7 +9,7 @@ export class PhoneCallModal {
     this.isOpen = false;
     this.currentAgent = null;
     this.timerInterval = null;
-    this.maxDuration = 180000; // 3 minutes per call - crack the king or wait
+    this.maxDuration = 60000; // 1 minute per call
 
     // Bind handlers
     this.handleStatus = this.handleStatus.bind(this);

@@ -1,7 +1,7 @@
 import type * as Party from "partykit/server";
 
-// 5 minute cooldown between calls per IP - persisted in storage
-const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+// 1 minute cooldown between calls per IP - persisted in storage
+const COOLDOWN_MS = 1 * 60 * 1000; // 1 minute
 
 export default class BlandServer implements Party.Server {
   constructor(readonly room: Party.Room) {}
@@ -40,7 +40,7 @@ export default class BlandServer implements Party.Server {
           return new Response(
             JSON.stringify({
               error: "cooldown",
-              message: `You can only call once every 5 mins. Try again in ${remainingMins} minutes.`,
+              message: `Please wait ${remainingMins} minute${remainingMins > 1 ? 's' : ''} before calling again.`,
               remainingMs
             }),
             { status: 429, headers }
