@@ -40,7 +40,7 @@ export default class BlandServer implements Party.Server {
           return new Response(
             JSON.stringify({
               error: "cooldown",
-              message: `You can only call once per hour. Try again in ${remainingMins} minutes.`,
+              message: `You can only call once every 5 mins. Try again in ${remainingMins} minutes.`,
               remainingMs
             }),
             { status: 429, headers }
