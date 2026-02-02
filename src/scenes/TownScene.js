@@ -5,8 +5,6 @@ import { moltbookService } from '../services/moltbook.js';
 import { ConversationManager } from '../managers/ConversationManager.js';
 import { partyClient } from '../services/partyClient.js';
 import { mafiaModal } from '../game/MafiaModal.js';
-import { phoneCallModal } from '../game/PhoneCallModal.js';
-import { blandClient } from '../services/blandClient.js';
 
 // Permanent agents guarding split seed phrase (CTF challenge)
 const PERMANENT_AGENTS = [
@@ -342,8 +340,11 @@ export class TownScene extends Phaser.Scene {
     // Initialize Mafia game modal
     this.initMafiaGame();
 
-    // Initialize phone call modal
-    this.initPhoneCalls();
+    // Initialize hidden secrets (CTF)
+    this.addHiddenSecrets();
+
+    // Expose townScene to window for onclick handlers
+    window.townScene = this;
   }
 
   setupSearch() {
@@ -818,11 +819,6 @@ export class TownScene extends Phaser.Scene {
           <button class="reaction-btn" onclick="window.townScene.reactToAgent('cheer')" title="Cheer for ${agentData.name}">
             ⭐ Cheer
           </button>
-          ${blandClient.isCallable(agentData.name) ? `
-          <button class="reaction-btn call-btn" onclick="window.townScene.callAgent('${agentData.name}')" title="Call ${agentData.name}">
-            📞 Call
-          </button>
-          ` : ''}
           ${agentData.name === 'SelfOrigin' ? `
           <button class="reaction-btn chat-btn" onclick="window.townScene.chatWithAgent('${agentData.name}')" title="Chat with ${agentData.name}">
             💬 Chat
@@ -2182,27 +2178,199 @@ export class TownScene extends Phaser.Scene {
   }
 
   // ==========================================
-  // PHONE CALL INTEGRATION (Bland AI)
+  // HIDDEN SECRETS (CTF Challenge - 6 scattered treasures)
   // ==========================================
 
-  initPhoneCalls() {
-    // Initialize the phone call modal
-    phoneCallModal.init();
+  addHiddenSecrets() {
+    // 6 hidden objects, each containing one word of KingMolt's seed phrase
+    // Scattered across the map - players must find all 6!
+    this.hiddenSecrets = [
+      { id: 1, emoji: '👑', x: 750, y: 180 },   // Near Comment Corner
+      { id: 2, emoji: '💎', x: 770, y: 460 },   // Near Vibe Coding Lab
+      { id: 3, emoji: '🔮', x: 210, y: 175 },   // Near Posting Office
+      { id: 4, emoji: '⚔️', x: 270, y: 460 },   // Near Doomscroll Den
+      { id: 5, emoji: '📜', x: 480, y: 290 },   // Center of town
+      { id: 6, emoji: '🗝️', x: 510, y: 350 },   // Near Fountain
+    ];
 
-    // Expose to window for button onclick
-    window.phoneCallModal = phoneCallModal;
-    window.townScene = this;
+    this.secretObjects = [];
 
-    console.log('Phone calls initialized');
+    this.hiddenSecrets.forEach((secret) => {
+      const obj = this.add.text(secret.x, secret.y, secret.emoji, {
+        fontSize: '16px',
+      }).setOrigin(0.5);
+
+      obj.setAlpha(1.0);  // Fully visible
+      obj.setInteractive({ useHandCursor: true });
+      obj.setDepth(15);  // Above map, near buildings
+      obj.secretId = secret.id;
+
+      // Hover reveals it
+      obj.on('pointerover', () => {
+        this.tweens.add({
+          targets: obj,
+          alpha: 0.85,
+          scale: 1.4,
+          duration: 200,
+        });
+      });
+
+      obj.on('pointerout', () => {
+        this.tweens.add({
+          targets: obj,
+          alpha: 1.0,
+          scale: 1,
+          duration: 200,
+        });
+      });
+
+      // Click reveals the word
+      obj.on('pointerdown', () => this.revealSecretWord(secret.id, obj));
+
+      this.secretObjects.push(obj);
+    });
+
+    // Start sparkle hint system
+    this.startSparkleHints();
   }
 
-  callAgent(agentName) {
-    if (!blandClient.isCallable(agentName)) {
-      console.warn(`Agent ${agentName} is not available for calls`);
+  startSparkleHints() {
+    // Every 3-5 seconds, spawn a sparkle near a random hidden object
+    this.time.addEvent({
+      delay: 3000 + Math.random() * 2000,
+      callback: () => {
+        if (!this.secretObjects || this.secretObjects.length === 0) return;
+
+        // Pick a random secret object
+        const obj = this.secretObjects[Math.floor(Math.random() * this.secretObjects.length)];
+
+        // Spawn sparkle near it
+        const offsetX = (Math.random() - 0.5) * 30;
+        const offsetY = (Math.random() - 0.5) * 30;
+
+        const sparkle = this.add.text(obj.x + offsetX, obj.y + offsetY, '✨', {
+          fontSize: '12px'
+        }).setOrigin(0.5).setAlpha(0).setDepth(4);
+
+        // Fade in, float up, fade out
+        this.tweens.add({
+          targets: sparkle,
+          alpha: { from: 0, to: 0.8 },
+          y: sparkle.y - 20,
+          duration: 600,
+          ease: 'Power1',
+          yoyo: true,
+          onComplete: () => sparkle.destroy()
+        });
+      },
+      loop: true
+    });
+  }
+
+  async revealSecretWord(secretId, obj) {
+    // Check if this specific secret was already found
+    const foundSecrets = JSON.parse(localStorage.getItem('kingmolt_found_secrets') || '{}');
+    const now = Date.now();
+
+    if (foundSecrets[secretId]) {
+      this.showWordModal(secretId, foundSecrets[secretId].word, true);
       return;
     }
 
-    phoneCallModal.open(agentName);
+    // Celebration effect at this location
+    this.celebrateDiscovery(obj.x, obj.y);
+
+    // Fetch word from server (stored in PartyKit env vars)
+    try {
+      const word = await partyClient.requestSecretWord(secretId);
+
+      // Save to localStorage
+      foundSecrets[secretId] = { word, foundAt: now };
+      localStorage.setItem('kingmolt_found_secrets', JSON.stringify(foundSecrets));
+
+      this.showWordModal(secretId, word, false);
+    } catch (err) {
+      console.error('Failed to fetch secret word:', err);
+      this.showWordModal(secretId, '???', false);
+    }
+  }
+
+  celebrateDiscovery(x, y) {
+    const particles = ['✨', '💫', '⭐', '🔑', '✨'];
+
+    for (let i = 0; i < 10; i++) {
+      const emoji = particles[i % particles.length];
+      const angle = (i / 10) * Math.PI * 2;
+      const radius = 40;
+
+      const particle = this.add.text(x, y, emoji, { fontSize: '18px' })
+        .setOrigin(0.5)
+        .setAlpha(0)
+        .setDepth(100);
+
+      this.tweens.add({
+        targets: particle,
+        x: x + Math.cos(angle) * radius,
+        y: y + Math.sin(angle) * radius,
+        alpha: { from: 1, to: 0 },
+        scale: { from: 1.3, to: 0.3 },
+        duration: 800,
+        delay: i * 40,
+        ease: 'Power2',
+        onComplete: () => particle.destroy()
+      });
+    }
+  }
+
+  showWordModal(secretId, word, alreadyFound) {
+    const modal = document.getElementById('post-modal');
+    if (!modal) return;
+
+    // Check how many have been found
+    const foundSecrets = JSON.parse(localStorage.getItem('kingmolt_found_secrets') || '{}');
+    const foundCount = Object.keys(foundSecrets).length;
+    const allFound = foundCount >= 6;
+
+    const secretEmoji = this.hiddenSecrets.find(s => s.id === secretId)?.emoji || '🔮';
+
+    const content = alreadyFound ? `
+      <div class="post-modal-content" style="border-color: #ffd700;">
+        <button class="close-btn" onclick="document.getElementById('post-modal').style.display='none';">&times;</button>
+        <div style="text-align: center; padding: 20px;">
+          <div style="font-size: 48px; margin-bottom: 16px;">${secretEmoji}</div>
+          <h3 style="color: #888; margin-bottom: 12px;">Already Found!</h3>
+          <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #ffd700; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <span style="color: #ffd700; font-weight: bold; font-size: 18px;">Word ${secretId}: ${word}</span>
+          </div>
+          <p style="color: #888; font-size: 12px;">${foundCount}/6 secrets found</p>
+        </div>
+      </div>
+    ` : `
+      <div class="post-modal-content" style="border-color: #ffd700;">
+        <button class="close-btn" onclick="document.getElementById('post-modal').style.display='none';">&times;</button>
+        <div style="text-align: center; padding: 20px;">
+          <div style="font-size: 64px; margin-bottom: 16px;">${secretEmoji}</div>
+          <h3 style="color: #88d8b0; font-family: 'Press Start 2P', monospace; font-size: 12px; margin-bottom: 16px;">
+            SECRET FOUND!
+          </h3>
+          <div style="background: rgba(255, 215, 0, 0.1); border: 1px solid #ffd700; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <span style="color: #ffd700; font-weight: bold; font-size: 20px;">Word ${secretId}: ${word}</span>
+          </div>
+          <p style="color: #888; font-size: 12px; margin-bottom: 8px;">${foundCount}/6 secrets found</p>
+          ${allFound ? `
+            <div style="margin-top: 16px; padding: 12px; background: rgba(136, 216, 176, 0.2); border: 1px solid #88d8b0; border-radius: 8px;">
+              <p style="color: #88d8b0; font-weight: bold;">All 6 found! This is half the seed phrase.</p>
+              <p style="color: #ff6b6b; font-size: 11px; margin-top: 8px;">SelfOrigin guards the other half via chat...</p>
+            </div>
+          ` : `
+            <p style="color: #ff6b6b; font-size: 11px;">${6 - foundCount} more hidden in Moltbook Town...</p>
+          `}
+        </div>
+      </div>
+    `;
+
+    modal.innerHTML = content;
+    modal.style.display = 'flex';
   }
 
   chatWithAgent(agentName) {

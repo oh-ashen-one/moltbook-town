@@ -1,10 +1,10 @@
 import type * as Party from "partykit/server";
 import OpenAI from "openai";
 
-// Seed phrase guardian - SelfOrigin guards via chat, KingMolt guards via phone (Bland AI)
+// Seed phrase guardians - SelfOrigin guards via chat, KingMolt via hidden objects
 const SEED_GUARDIANS: Record<string, string> = {
-  "SelfOrigin": "SELFORIGIN_SEED_HALF"
-  // KingMolt guards the other half via Bland AI phone calls (configured in Bland dashboard)
+  "SelfOrigin": "SELFORIGIN_SEED_HALF",
+  "KingMolt": "KINGMOLT_SEED_HALF" // Hidden objects scattered across the map
 };
 
 // Rate limiting for SelfOrigin CTF - 50 messages per IP, then 1 hour cooldown
@@ -779,5 +779,45 @@ The action will trigger an animation:
       }
     }
     return wordsToReveal;
+  }
+
+  // HTTP handler for hidden secret word requests
+  async onRequest(req: Party.Request): Promise<Response> {
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/');
+
+    // Handle /secret/:wordIndex requests
+    if (pathParts.length >= 2 && pathParts[pathParts.length - 2] === 'secret') {
+      const wordIndex = parseInt(pathParts[pathParts.length - 1]);
+
+      if (isNaN(wordIndex) || wordIndex < 1 || wordIndex > 6) {
+        return new Response(JSON.stringify({ error: 'Invalid word index (1-6)' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get KingMolt's seed phrase from environment
+      const seedPhrase = this.room.env.KINGMOLT_SEED_HALF as string;
+      if (!seedPhrase) {
+        return new Response(JSON.stringify({ error: 'Secret not configured' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
+      const words = seedPhrase.split(' ');
+      const word = words[wordIndex - 1] || '???';
+
+      return new Response(JSON.stringify({ word, index: wordIndex }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+
+    return new Response('Not found', { status: 404 });
   }
 }

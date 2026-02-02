@@ -168,6 +168,22 @@ class PartyClient {
   getUserId() {
     return this.userId;
   }
+
+  // Request a specific secret word from the server
+  async requestSecretWord(wordIndex) {
+    const protocol = window.location.protocol;
+    const response = await fetch(`${protocol}//${PARTYKIT_HOST}/parties/main/${ROOM_NAME}/secret/${wordIndex}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch secret: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.word;
+  }
 }
 
 // Export singleton instance
