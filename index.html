@@ -1219,72 +1219,6 @@
       box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
     }
 
-    /* Bounty card (fixed top left) */
-    .bounty-card {
-      position: fixed;
-      left: 20px;
-      top: 20px;
-      background: rgba(20, 20, 40, 0.95);
-      border-radius: 12px;
-      padding: 14px 16px;
-      border: 1px solid rgba(255, 215, 0, 0.4);
-      backdrop-filter: blur(10px);
-      z-index: 20;
-      text-decoration: none;
-      display: block;
-      max-width: 180px;
-      animation: bountyGlow 2s ease-in-out infinite;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .bounty-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.3);
-    }
-
-    @keyframes bountyGlow {
-      0%, 100% {
-        box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
-        border-color: rgba(255, 215, 0, 0.4);
-      }
-      50% {
-        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
-        border-color: rgba(255, 215, 0, 0.7);
-      }
-    }
-
-    .bounty-amount {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 12px;
-      color: #ffd700;
-      text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
-      margin-bottom: 8px;
-    }
-
-    .bounty-text {
-      font-size: 11px;
-      color: rgba(255, 255, 255, 0.85);
-      line-height: 1.4;
-      margin-bottom: 10px;
-    }
-
-    .bounty-cta {
-      font-size: 10px;
-      color: #ffd700;
-      opacity: 0.8;
-      transition: opacity 0.2s;
-    }
-
-    .bounty-card:hover .bounty-cta {
-      opacity: 1;
-    }
-
-    @media (max-width: 1200px) {
-      .bounty-card {
-        display: none;
-      }
-    }
-
     /* Building popup */
     #building-popup {
       display: none;
@@ -2178,13 +2112,6 @@
   </style>
 </head>
 <body>
-  <!-- Bounty card (fixed left) -->
-  <a href="https://x.com/ashen_one/status/2017713362621370528" target="_blank" rel="noopener" class="bounty-card">
-    <div class="bounty-amount">$1000 USDC</div>
-    <div class="bounty-text">btw there's $1000 hidden somewhere with these agents...</div>
-    <div class="bounty-cta">learn more →</div>
-  </a>
-
   <!-- Activity buttons (fixed left) -->
   <div class="activity-card">
     <h3>🎮 ACTIVITIES</h3>
