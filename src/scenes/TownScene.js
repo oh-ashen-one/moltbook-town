@@ -4,7 +4,6 @@ import { Agent } from '../entities/Agent.js';
 import { moltbookService } from '../services/moltbook.js';
 import { ConversationManager } from '../managers/ConversationManager.js';
 import { partyClient } from '../services/partyClient.js';
-import { mafiaModal } from '../game/MafiaModal.js';
 
 // Permanent agents - stationary near their buildings
 const PERMANENT_AGENTS = [
@@ -305,9 +304,6 @@ export class TownScene extends Phaser.Scene {
 
     // Setup multiplayer chat
     this.setupMultiplayerChat();
-
-    // Initialize Mafia game modal
-    this.initMafiaGame();
 
     // Expose townScene to window for onclick handlers
     window.townScene = this;
@@ -2071,70 +2067,6 @@ export class TownScene extends Phaser.Scene {
   syncAgentsToParty() {
     if (this.agents.length > 0) {
       partyClient.updateAgents(this.agents);
-      // Also sync to mafia game
-      mafiaModal.updateAgents(this.agents);
     }
-  }
-
-  // ==========================================
-  // MAFIA GAME INTEGRATION
-  // ==========================================
-
-  initMafiaGame() {
-    // Initialize the mafia modal
-    mafiaModal.init();
-
-    // Expose to window for button onclick
-    window.mafiaModal = mafiaModal;
-
-    // Expose townScene for mafia modal agent sync
-    window.townScene = this;
-
-    // Check for hourly game trigger
-    this.setupMafiaHourlyTrigger();
-
-    console.log('Mafia game initialized');
-  }
-
-  setupMafiaHourlyTrigger() {
-    // Check every minute if we're at the top of the hour
-    const checkHourly = () => {
-      const now = new Date();
-      const minutes = now.getMinutes();
-      const seconds = now.getSeconds();
-
-      // Trigger at :00 of each hour (with 30 second buffer)
-      if (minutes === 0 && seconds < 30) {
-        console.log('Hourly Mafia game trigger!');
-        this.startMafiaGame();
-      }
-    };
-
-    // Check every 30 seconds
-    this.time.addEvent({
-      delay: 30000,
-      callback: checkHourly,
-      loop: true
-    });
-
-    // Also check immediately
-    checkHourly();
-  }
-
-  // Manual trigger for testing
-  startMafiaGame() {
-    if (this.agents.length < 5) {
-      console.log('Not enough agents for Mafia game');
-      return;
-    }
-
-    // Sync latest agents
-    mafiaModal.updateAgents(this.agents);
-
-    // Start the game
-    mafiaModal.startGame();
-
-    // Open the modal
-    mafiaModal.open();
   }
 }

@@ -2,8 +2,7 @@
   "name": "moltbook-town",
   "main": "party/chat.ts",
   "parties": {
-    "chat": "party/chat.ts",
-    "mafia": "party/mafia.ts"
+    "chat": "party/chat.ts"
   },
   "compatibilityDate": "2024-01-01"
 }
